@@ -201,12 +201,35 @@ class Shape3DViewer {
         this.transformControls = new TransformControls(this.camera, this.renderer.domElement);
         this.transformControls.setMode('translate'); // 设置为移动模式，显示箭头手柄
         this.transformControls.setTranslationSnap(0.1); // 设置移动步长为0.1
+        this.transformStartState = null; // 用于保存变换前的状态
+
         this.transformControls.addEventListener('dragging-changed', (event) => {
             this.controls.enabled = !event.value; // 拖拽时禁用轨道控制器
+
+            // 拖拽开始时保存状态
+            if (event.value && this.selectedShape) {
+                this.transformStartState = this.saveShapeState(this.selectedShape);
+            }
+            // 拖拽结束时记录历史
+            else if (!event.value && this.selectedShape && this.transformStartState) {
+                const endState = this.saveShapeState(this.selectedShape);
+                // 只有状态真正改变时才记录
+                if (JSON.stringify(this.transformStartState) !== JSON.stringify(endState)) {
+                    this.addToHistory('transform', {
+                        shapeId: this.selectedShape.userData.id,
+                        oldState: this.transformStartState,
+                        newState: endState
+                    });
+                }
+                this.transformStartState = null;
+            }
         });
         this.transformControls.addEventListener('objectChange', () => {
             // 对象变换时更新选择框
             if (this.selectedShape) {
+                // 限制图形位置，确保不低于网格
+                this.constrainShapePosition(this.selectedShape);
+
                 const selectionBox = this.scene.getObjectByName('selectionBox');
                 if (selectionBox) {
                     selectionBox.update();
@@ -1405,14 +1428,17 @@ class Shape3DViewer {
               const gridSize = 20;
               const margin = 0.5;
 
-              // 限制图形在网格范围内移动
-              newPosition.x = Math.max(halfSizeX + margin, Math.min(gridSize - halfSizeX - margin, newPosition.x));
-              const minY = size.y / 2;
-              const maxY = gridSize;
-              newPosition.y = Math.max(minY, Math.min(maxY - size.y / 2, newPosition.y));
-              newPosition.z = Math.max(halfSizeZ + margin, Math.min(gridSize - halfSizeZ - margin, newPosition.z));
+               // 限制图形在网格范围内移动
+               newPosition.x = Math.max(halfSizeX + margin, Math.min(gridSize - halfSizeX - margin, newPosition.x));
+               const minY = size.y / 2;
+               const maxY = gridSize;
+               newPosition.y = Math.max(minY, Math.min(maxY - size.y / 2, newPosition.y));
+               newPosition.z = Math.max(halfSizeZ + margin, Math.min(gridSize - halfSizeZ - margin, newPosition.z));
 
-              this.selectedShape.position.copy(newPosition);
+               this.selectedShape.position.copy(newPosition);
+
+               // 限制图形位置，确保不低于网格
+               this.constrainShapePosition(this.selectedShape);
 
               // 确保图形的缩放不变
               if (this.selectedShape.userData.originalScale) {
@@ -2159,6 +2185,21 @@ class Shape3DViewer {
             this.showTooltip('切割平面记录已删除（已切割的几何体保持不变）', 2000);
         }
     }
+
+    // 限制图形位置，确保图形不会低于网格线（y=0）
+    constrainShapePosition(mesh) {
+        if (!mesh || !mesh.geometry) return;
+
+        // 计算几何体的边界框
+        const box = new THREE.Box3().setFromObject(mesh);
+        const minY = box.min.y;
+
+        // 如果图形底部低于网格线（y=0），调整位置
+        if (minY < 0) {
+            const offset = -minY;
+            mesh.position.y += offset;
+        }
+    }
     
     createShape(shapeType, position = null) {
         console.log('createShape被调用，类型:', shapeType);
@@ -2244,6 +2285,9 @@ class Shape3DViewer {
 
         this.shapes.set(mesh.userData.id, mesh);
         this.scene.add(mesh);
+
+        // 限制图形位置，确保不低于网格
+        this.constrainShapePosition(mesh);
 
         // 记录操作历史
         this.addToHistory('create', { shapeId: mesh.userData.id, type: shapeType, position });
@@ -2437,6 +2481,9 @@ class Shape3DViewer {
             this.scene.add(newShape);
             this.shapes.set(newShapeId, newShape);
 
+            // 限制图形位置，确保不低于网格
+            this.constrainShapePosition(newShape);
+
             // 记录到历史
             this.addToHistory('create', {
                 shapeId: newShapeId,
@@ -2484,6 +2531,9 @@ class Shape3DViewer {
         mesh.material.color.setHex(state.color);
         mesh.geometry = state.geometry;
         mesh.userData = state.userData;
+
+        // 限制图形位置，确保不低于网格
+        this.constrainShapePosition(mesh);
     }
     
     undo() {
@@ -2504,47 +2554,20 @@ class Shape3DViewer {
                     break;
                     
                 case 'remove':
-                    // 重新创建被删除的图形
                     const restoredMesh = operation.data.mesh.clone();
                     restoredMesh.material = restoredMesh.material.clone();
                     this.scene.add(restoredMesh);
                     this.shapes.set(operation.data.shapeId, restoredMesh);
                     break;
-                    
-                case 'move':
-                    // 恢复移动前的位置
-                    const moveMesh = this.shapes.get(operation.data.shapeId);
-                    if (moveMesh) {
-                        moveMesh.position.copy(operation.data.oldPosition);
-                    }
-                    break;
-                    
-                case 'scale':
-                    // 恢复缩放前的状态
-                    const scaleMesh = this.shapes.get(operation.data.shapeId);
-                    if (scaleMesh) {
-                        scaleMesh.scale.copy(operation.data.oldScale);
-                    }
-                    break;
-                    
-                case 'color':
-                    // 恢复颜色变化前的状态
-                    const colorMesh = this.shapes.get(operation.data.shapeId);
-                    if (colorMesh) {
-                        colorMesh.material.color.setHex(operation.data.oldColor);
-                    }
-                    break;
-                    
+
                 case 'cut':
-                    // 恢复切割前的几何体
                     const cutMesh = this.shapes.get(operation.data.shapeId);
                     if (cutMesh && operation.data.oldGeometry) {
                         cutMesh.geometry = operation.data.oldGeometry.clone();
                     }
                     break;
-                    
+
                 case 'transform':
-                    // 恢复完整的变换状态
                     const transformMesh = this.shapes.get(operation.data.shapeId);
                     if (transformMesh) {
                         this.restoreShapeState(transformMesh, operation.data.oldState);
@@ -2576,7 +2599,6 @@ class Shape3DViewer {
                     break;
                     
                 case 'remove':
-                    // 重新删除图形
                     const mesh = this.shapes.get(operation.data.shapeId);
                     if (mesh) {
                         this.scene.remove(mesh);
@@ -2586,41 +2608,15 @@ class Shape3DViewer {
                         }
                     }
                     break;
-                    
-                case 'move':
-                    // 重新应用移动
-                    const moveMesh = this.shapes.get(operation.data.shapeId);
-                    if (moveMesh) {
-                        moveMesh.position.copy(operation.data.newPosition);
-                    }
-                    break;
-                    
-                case 'scale':
-                    // 重新应用缩放
-                    const scaleMesh = this.shapes.get(operation.data.shapeId);
-                    if (scaleMesh) {
-                        scaleMesh.scale.copy(operation.data.newScale);
-                    }
-                    break;
-                    
-                case 'color':
-                    // 重新应用颜色变化
-                    const colorMesh = this.shapes.get(operation.data.shapeId);
-                    if (colorMesh) {
-                        colorMesh.material.color.setHex(operation.data.newColor);
-                    }
-                    break;
-                    
+
                 case 'cut':
-                    // 重新应用切割
                     const cutMesh = this.shapes.get(operation.data.shapeId);
                     if (cutMesh && operation.data.newGeometry) {
                         cutMesh.geometry = operation.data.newGeometry.clone();
                     }
                     break;
-                    
+
                 case 'transform':
-                    // 重新应用完整的变换状态
                     const transformMesh = this.shapes.get(operation.data.shapeId);
                     if (transformMesh) {
                         this.restoreShapeState(transformMesh, operation.data.newState);
@@ -2944,21 +2940,21 @@ class Shape3DViewer {
         }
         
         // 快速设置切割方向按钮
-        const quickCuttingXBtn = document.getElementById('quickCuttingX');
+        const quickCuttingXBtn = document.getElementById('setNormalX');
         if (quickCuttingXBtn) {
             quickCuttingXBtn.addEventListener('click', () => {
                 this.setQuickCuttingDirection('x');
             });
         }
         
-        const quickCuttingYBtn = document.getElementById('quickCuttingY');
+        const quickCuttingYBtn = document.getElementById('setNormalY');
         if (quickCuttingYBtn) {
             quickCuttingYBtn.addEventListener('click', () => {
                 this.setQuickCuttingDirection('y');
             });
         }
         
-        const quickCuttingZBtn = document.getElementById('quickCuttingZ');
+        const quickCuttingZBtn = document.getElementById('setNormalZ');
         if (quickCuttingZBtn) {
             quickCuttingZBtn.addEventListener('click', () => {
                 this.setQuickCuttingDirection('z');
@@ -2969,9 +2965,33 @@ class Shape3DViewer {
         ['posX', 'posY', 'posZ'].forEach(id => {
             const element = document.getElementById(id);
             if (element) {
+                let positionStartState = null;
+                let positionTimeout = null;
+
+                element.addEventListener('mousedown', () => {
+                    if (this.selectedShape) {
+                        positionStartState = this.saveShapeState(this.selectedShape);
+                    }
+                });
+
                 element.addEventListener('input', (e) => {
                     this.updateShapePosition(id, parseFloat(e.target.value));
                     document.getElementById(id + 'Value').textContent = parseFloat(e.target.value).toFixed(1);
+
+                    if (positionTimeout) {
+                        clearTimeout(positionTimeout);
+                    }
+                    positionTimeout = setTimeout(() => {
+                        if (this.selectedShape && positionStartState) {
+                            const endState = this.saveShapeState(this.selectedShape);
+                            this.addToHistory('transform', {
+                                shapeId: this.selectedShape.userData.id,
+                                oldState: positionStartState,
+                                newState: endState
+                            });
+                            positionStartState = null;
+                        }
+                    }, 500);
                 });
             }
         });
@@ -3008,11 +3028,10 @@ class Shape3DViewer {
                     scaleTimeout = setTimeout(() => {
                         if (this.selectedShape && scaleStartState) {
                             const endState = this.saveShapeState(this.selectedShape);
-                            this.addToHistory({
-                                type: 'scale',
+                            this.addToHistory('transform', {
                                 shapeId: this.selectedShape.userData.id,
-                                beforeState: scaleStartState,
-                                afterState: endState
+                                oldState: scaleStartState,
+                                newState: endState
                             });
                             scaleStartState = null;
                         }
@@ -4088,6 +4107,9 @@ class Shape3DViewer {
             this.scene.add(mesh);
             this.shapes.set(shapeId, mesh);
 
+            // 限制图形位置，确保不低于网格
+            this.constrainShapePosition(mesh);
+
             // 设置阴影
             mesh.castShadow = true;
             mesh.receiveShadow = true;
@@ -4462,6 +4484,9 @@ class Shape3DViewer {
          if (positionAxis) {
              this.selectedShape.position[positionAxis] = value;
 
+             // 限制图形位置，确保不低于网格
+             this.constrainShapePosition(this.selectedShape);
+
              // 更新图形信息显示
              this.updateShapeInfo(this.selectedShape);
 
@@ -4473,15 +4498,18 @@ class Shape3DViewer {
          }
      }
 
-     // 重置图形位置
-     resetShapePosition() {
-         if (!this.selectedShape) return;
+      // 重置图形位置
+      resetShapePosition() {
+          if (!this.selectedShape) return;
 
-         const defaultPosition = { x: 10, y: 5, z: 10 };
+          const defaultPosition = { x: 10, y: 5, z: 10 };
 
-         this.selectedShape.position.set(defaultPosition.x, defaultPosition.y, defaultPosition.z);
+          this.selectedShape.position.set(defaultPosition.x, defaultPosition.y, defaultPosition.z);
 
-         // 更新滑块值
+          // 限制图形位置，确保不低于网格
+          this.constrainShapePosition(this.selectedShape);
+
+          // 更新滑块值
          ['posX', 'posY', 'posZ'].forEach(id => {
              const slider = document.getElementById(id);
              const valueDisplay = document.getElementById(id + 'Value');

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D立体图形观察器</title>
+    <title>3D图形编辑器</title>
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <style>
         body {
@@ -402,7 +402,7 @@
             <div style="background: white; margin: 50px auto; padding: 30px; border-radius: 10px; max-width: 800px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); position: relative;">
                 <button id="closeHelp" style="position: absolute; top: 15px; right: 20px; background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>
                 
-                <h2 style="color: #333; margin-bottom: 20px; text-align: center;">🎯 3D图形查看器 - 功能指南</h2>
+                <h2 style="color: #333; margin-bottom: 20px; text-align: center;">🎯 3D图形编辑器 - 功能指南</h2>
                 
                 <div style="max-height: 70vh; overflow-y: auto; padding-right: 10px;">
                     <!-- 项目特色 -->
@@ -411,10 +411,11 @@
                         <ul style="line-height: 1.6; color: #555;">
                             <li><strong>多图形支持：</strong>立方体、球体、圆柱体、圆锥体、环面等基础几何体</li>
                             <li><strong>高精度切割：</strong>三级精度模式，支持0.0001级别的超高精度切割</li>
-                            <li><strong>智能附着：</strong>新图形可智能附着到现有图形表面</li>
                             <li><strong>图形组合：</strong>支持多个图形的锁定组合操作</li>
+                            <li><strong>布尔运算：</strong>支持图形的并集、差集（挖空）、交集运算</li>
                             <li><strong>实时预览：</strong>所有操作都有实时预览效果</li>
-                            <li><strong>操作历史：</strong>支持撤销/重做功能</li>
+                            <li><strong>完整撤销系统：</strong>支持图形创建/删除、位置/缩放调整、切割等所有操作的撤销/重做</li>
+                            <li><strong>配置管理：</strong>支持保存和加载场景配置文件</li>
                         </ul>
                     </div>
                     
@@ -431,13 +432,24 @@
                                 </ul>
                             </div>
                             <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
-                                <h4 style="color: #333; margin-bottom: 8px;">⌨️ 快捷键</h4>
+                                <h4 style="color: #333; margin-bottom: 8px;">🎯 图形选择与变换</h4>
                                 <ul style="font-size: 14px; color: #666; margin: 0; padding-left: 20px;">
-                                    <li>Ctrl+Z：撤销操作</li>
-                                    <li>Ctrl+Y：重做操作</li>
-                                    <li>Ctrl+1/2/3：切换精度模式</li>
+                                    <li>点击图形：选中图形</li>
+                                    <li>选中后显示控制器</li>
+                                    <li>拖拽箭头：移动图形</li>
+                                    <li>拖拽圆环：旋转图形</li>
+                                    <li>快捷键 R/S：切换旋转/缩放模式</li>
                                 </ul>
                             </div>
+                        </div>
+                        <div style="background: #e7f3ff; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                            <h4 style="color: #0056b3; margin-bottom: 10px;">↩️ 撤销/重做系统</h4>
+                            <ul style="color: #004085; margin: 0; padding-left: 20px; line-height: 1.8;">
+                                <li><strong>支持的操作：</strong>图形创建/删除、位置调整（滑块/TransformControls）、缩放调整、颜色修改、切割操作、布尔运算</li>
+                                <li><strong>历史记录：</strong>最多保存50步操作历史</li>
+                                <li><strong>使用方式：</strong>点击撤销/重做按钮，或使用Ctrl+Z/Ctrl+Y快捷键</li>
+                                <li><strong>智能防抖：</strong>滑块拖拽调整时，停止操作500ms后自动记录历史，避免频繁记录</li>
+                            </ul>
                         </div>
                     </div>
                     
@@ -469,21 +481,28 @@
                         <h3 style="color: #6f42c1; border-bottom: 2px solid #6f42c1; padding-bottom: 5px;">🚀 高级功能</h3>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px;">
                             <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
-                                <h4 style="color: #333; margin-bottom: 8px;">📎 附着模式</h4>
-                                <p style="font-size: 14px; color: #666; margin: 0;">激活后点击现有图形表面，新创建的图形将自动附着到该位置</p>
-                            </div>
-                            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
                                 <h4 style="color: #333; margin-bottom: 8px;">🔒 图形组合</h4>
-                                <p style="font-size: 14px; color: #666; margin: 0;">选择多个图形后可以锁定组合，作为一个整体进行操作</p>
+                                <p style="font-size: 14px; color: #666; margin: 0;">选择多个图形后可以锁定组合，作为一个整体进行切割操作</p>
                             </div>
                             <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
-                                <h4 style="color: #333; margin-bottom: 8px;">🚚 移动模式</h4>
-                                <p style="font-size: 14px; color: #666; margin: 0;">激活后可以直接拖拽图形进行位置调整，视角保持不变</p>
+                                <h4 style="color: #333; margin-bottom: 8px;">🔧 TransformControls</h4>
+                                <p style="font-size: 14px; color: #666; margin: 0;">选中图形后显示3D控制器，支持拖拽箭头移动、拖拽旋转环旋转</p>
                             </div>
                             <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
-                                <h4 style="color: #333; margin-bottom: 8px;">🌐 线框模式</h4>
-                                <p style="font-size: 14px; color: #666; margin: 0;">切换到线框显示模式，便于观察图形的内部结构</p>
+                                <h4 style="color: #333; margin-bottom: 8px;">🎨 颜色管理</h4>
+                                <p style="font-size: 14px; color: #666; margin: 0;">支持批量更新所有图形颜色，以及新图形颜色主题选择</p>
                             </div>
+                            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                                <h4 style="color: #333; margin-bottom: 8px;">💾 配置管理</h4>
+                                <p style="font-size: 14px; color: #666; margin: 0;">支持保存当前场景为配置文件，并可随时加载或批量管理</p>
+                            </div>
+                        </div>
+                        <div style="background: #e7f3ff; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                            <h4 style="color: #0056b3; margin-bottom: 10px;">🔧 布尔运算</h4>
+                            <p style="font-size: 14px; color: #004085; margin: 0; line-height: 1.6;">选择两个图形后可执行布尔运算：<br>
+                            • <strong>减法（挖空）</strong>：使用工具图形从主体图形中挖出空洞<br>
+                            • <strong>并集（合并）</strong>：将两个图形合并为一个<br>
+                            • <strong>交集</strong>：保留两个图形相交的部分</p>
                         </div>
                     </div>
                     
@@ -495,8 +514,11 @@
                                 <li>使用数值输入框可以实现更精确的参数控制</li>
                                 <li>切割前建议先预览效果，确认无误后再应用</li>
                                 <li>复杂模型建议分步骤进行切割，避免一次性操作过多</li>
-                                <li>善用撤销功能，可以安全地尝试各种操作</li>
+                                <li><strong>善用撤销功能</strong>：所有变换操作（移动、缩放、旋转）都可撤销，可以安全地尝试各种参数组合</li>
                                 <li>组合功能适用于需要整体操作的复杂结构</li>
+                                <li>TransformControls拖拽变换结束后会自动记录历史，方便调整</li>
+                                <li>布尔运算对已切割的图形建议使用CSG引擎切割模式</li>
+                                <li>定期保存重要场景到配置文件，避免意外丢失</li>
                             </ul>
                         </div>
                     </div>
@@ -506,10 +528,11 @@
                         <h3 style="color: #dc3545; border-bottom: 2px solid #dc3545; padding-bottom: 5px;">⚠️ 注意事项</h3>
                         <div style="background: #f8d7da; padding: 15px; border-radius: 8px;">
                             <ul style="color: #721c24; margin: 0; padding-left: 20px; line-height: 1.6;">
-                                <li>几何切割是永久性操作，应用后无法通过清除切割平面恢复</li>
+                                <li>几何切割和布尔运算是永久性操作，应用后无法通过清除切割平面恢复（可使用撤销功能）</li>
                                 <li>超高精度模式会增加计算时间，请根据需要选择</li>
-                                <li>大型复杂模型的切割操作可能需要较长时间</li>
-                                <li>建议定期保存重要的建模进度</li>
+                                <li>大型复杂模型的切割和布尔运算操作可能需要较长时间</li>
+                                <li>建议定期保存重要的建模进度到配置文件</li>
+                                <li>布尔运算前建议先撤销历史，确保操作可回退</li>
                             </ul>
                         </div>
                     </div>
