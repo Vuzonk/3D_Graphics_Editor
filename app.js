@@ -1558,6 +1558,12 @@ class Shape3DViewer {
 
         // 显示大小控制面板并更新滑块值
         this.showShapeSizeControls(mesh);
+
+        // 显示材质控制面板
+        this.showMaterialControls(mesh);
+
+        // 显示几何参数控制面板
+        this.showGeometryControls();
     }
     
     deselectShape() {
@@ -1572,6 +1578,14 @@ class Shape3DViewer {
                 this.transformControls.enabled = false;
                 this.transformControls.visible = false;
             }
+
+            // 隐藏位置和大小控制面板
+            this.hideShapePositionControls();
+            this.hideShapeSizeControls();
+
+            // 隐藏材质控制和几何参数控制面板
+            this.hideMaterialControls();
+            this.hideGeometryControls();
 
             this.selectedShape = null;
 
@@ -2277,7 +2291,8 @@ class Shape3DViewer {
             type: shapeType,
             created: new Date().toLocaleTimeString(),
             originalScale: mesh.scale.clone(), // 保存原始缩放值
-            isRainbow: material.userData && material.userData.isRainbow // 标记是否为彩虹颜色
+            isRainbow: material.userData && material.userData.isRainbow, // 标记是否为彩虹颜色
+            ownMaterial: true // 标记为拥有独立材质
         };
 
         // 应用所有切割平面
@@ -2350,12 +2365,22 @@ class Shape3DViewer {
     
     // 批量更新所有图形颜色的方法
     updateAllShapesColor(colorValue) {
+        const colorHex = parseInt(colorValue.replace('#', '0x'));
+        let count = 0;
         this.shapes.forEach((mesh, id) => {
             if (mesh && mesh.material) {
-                mesh.material.color.setHex(parseInt(colorValue.replace('#', '0x')));
+                // 确保每个图形使用独立的材质实例
+                if (!mesh.userData.ownMaterial) {
+                    mesh.material = mesh.material.clone();
+                    mesh.userData.ownMaterial = true;
+                }
+                mesh.material.color.setHex(colorHex);
+                mesh.userData.isRainbow = false;
+                count++;
             }
         });
-        this.showTooltip('已更新所有图形的颜色', 1500);
+        this.showTooltip(`已更新 ${count} 个图形的颜色`, 1500);
+        this.updateShapesList();
     }
     
     // 移除了截面控制功能
@@ -2465,6 +2490,9 @@ class Shape3DViewer {
             const newShape = this.selectedShape.clone();
             newShape.material = this.selectedShape.material.clone();
             newShape.geometry = this.selectedShape.geometry.clone();
+
+            // 标记为拥有独立材质
+            newShape.userData.ownMaterial = true;
 
             // 设置新位置
             newShape.position.copy(newPosition);
@@ -3066,6 +3094,129 @@ class Shape3DViewer {
                 }
             });
         }
+
+        // 材质参数控制
+        ['metalness', 'roughness', 'opacity', 'clearcoat', 'reflectivity'].forEach(param => {
+            const slider = document.getElementById(param);
+            const valueDisplay = document.getElementById(param + 'Value');
+            if (slider && valueDisplay) {
+                slider.addEventListener('input', () => {
+                    const value = parseFloat(slider.value);
+                    valueDisplay.textContent = value.toFixed(2);
+                    this.updateSelectedShapeMaterial(param, value);
+                });
+            }
+        });
+
+        const resetMaterialBtn = document.getElementById('resetMaterial');
+        if (resetMaterialBtn) {
+            resetMaterialBtn.addEventListener('click', () => {
+                this.resetSelectedShapeMaterial();
+            });
+        }
+
+        // 光照系统控制
+        const mainLightIntensity = document.getElementById('mainLightIntensity');
+        const mainLightIntensityValue = document.getElementById('mainLightIntensityValue');
+        if (mainLightIntensity && mainLightIntensityValue) {
+            mainLightIntensity.addEventListener('input', () => {
+                const value = parseFloat(mainLightIntensity.value);
+                mainLightIntensityValue.textContent = value.toFixed(1);
+                this.updateMainLightIntensity(value);
+            });
+        }
+
+        const ambientLightIntensity = document.getElementById('ambientLightIntensity');
+        const ambientLightIntensityValue = document.getElementById('ambientLightIntensityValue');
+        if (ambientLightIntensity && ambientLightIntensityValue) {
+            ambientLightIntensity.addEventListener('input', () => {
+                const value = parseFloat(ambientLightIntensity.value);
+                ambientLightIntensityValue.textContent = value.toFixed(1);
+                this.updateAmbientLightIntensity(value);
+            });
+        }
+
+        const mainLightColor = document.getElementById('mainLightColor');
+        const mainLightColorValue = document.getElementById('mainLightColorValue');
+        if (mainLightColor && mainLightColorValue) {
+            mainLightColor.addEventListener('input', () => {
+                mainLightColorValue.textContent = mainLightColor.value;
+                this.updateMainLightColor(mainLightColor.value);
+            });
+        }
+
+        ['lightPositionX', 'lightPositionY', 'lightPositionZ'].forEach(param => {
+            const slider = document.getElementById(param);
+            const valueDisplay = document.getElementById(param + 'Value');
+            if (slider && valueDisplay) {
+                slider.addEventListener('input', () => {
+                    const value = parseFloat(slider.value);
+                    valueDisplay.textContent = value;
+                    this.updateLightPosition();
+                });
+            }
+        });
+
+        const resetLightingBtn = document.getElementById('resetLighting');
+        if (resetLightingBtn) {
+            resetLightingBtn.addEventListener('click', () => {
+                this.resetLighting();
+            });
+        }
+
+        // 环境设置
+        const backgroundColor = document.getElementById('backgroundColor');
+        const backgroundColorValue = document.getElementById('backgroundColorValue');
+        if (backgroundColor && backgroundColorValue) {
+            backgroundColor.addEventListener('input', () => {
+                backgroundColorValue.textContent = backgroundColor.value;
+                this.updateBackgroundColor(backgroundColor.value);
+            });
+        }
+
+        const gridColor = document.getElementById('gridColor');
+        const gridColorValue = document.getElementById('gridColorValue');
+        if (gridColor && gridColorValue) {
+            gridColor.addEventListener('input', () => {
+                gridColorValue.textContent = gridColor.value;
+                this.updateGridColor(gridColor.value);
+            });
+        }
+
+        const gridSize = document.getElementById('gridSize');
+        const gridSizeValue = document.getElementById('gridSizeValue');
+        if (gridSize && gridSizeValue) {
+            gridSize.addEventListener('input', () => {
+                const value = parseInt(gridSize.value);
+                gridSizeValue.textContent = value;
+                this.updateGridSize(value);
+            });
+        }
+
+        const resetEnvironmentBtn = document.getElementById('resetEnvironment');
+        if (resetEnvironmentBtn) {
+            resetEnvironmentBtn.addEventListener('click', () => {
+                this.resetEnvironment();
+            });
+        }
+
+        // 图形尺寸参数
+        const applyGeometryBtn = document.getElementById('applyGeometryChanges');
+        if (applyGeometryBtn) {
+            applyGeometryBtn.addEventListener('click', () => {
+                this.applyGeometryChanges();
+            });
+        }
+
+        // 几何参数滑块事件监听（动态生成，需要通过事件委托）
+        document.addEventListener('input', (e) => {
+            if (e.target.id && e.target.id.startsWith('geo')) {
+                const valueDisplay = document.getElementById(e.target.id + 'Value');
+                if (valueDisplay) {
+                    valueDisplay.textContent = parseFloat(e.target.value).toFixed(1);
+                }
+            }
+        });
 
         // 配置管理事件监听器
         const saveConfigBtn = document.getElementById('saveConfig');
@@ -4554,15 +4705,49 @@ class Shape3DViewer {
          }
      }
      
-     // 隐藏图形大小控制面板
-     hideShapeSizeControls() {
-         const controls = document.getElementById('shapeSizeControls');
-         if (controls) {
-             controls.style.display = 'none';
-         }
-     }
-     
-     // 检查图形边界并动态调整网格大小
+      // 隐藏图形大小控制面板
+      hideShapeSizeControls() {
+          const controls = document.getElementById('shapeSizeControls');
+          if (controls) {
+              controls.style.display = 'none';
+          }
+      }
+
+      // 显示材质控制面板
+      showMaterialControls(mesh) {
+          const controls = document.getElementById('materialControls');
+          if (controls) {
+              controls.style.display = 'block';
+
+              // 更新滑块值为当前图形的材质值
+              if (mesh.material) {
+                  document.getElementById('metalness').value = mesh.material.metalness || 0.15;
+                  document.getElementById('metalnessValue').textContent = (mesh.material.metalness || 0.15).toFixed(2);
+
+                  document.getElementById('roughness').value = mesh.material.roughness || 0.25;
+                  document.getElementById('roughnessValue').textContent = (mesh.material.roughness || 0.25).toFixed(2);
+
+                  document.getElementById('opacity').value = mesh.material.opacity || 0.95;
+                  document.getElementById('opacityValue').textContent = (mesh.material.opacity || 0.95).toFixed(2);
+
+                  document.getElementById('clearcoat').value = mesh.material.clearcoat || 0.3;
+                  document.getElementById('clearcoatValue').textContent = (mesh.material.clearcoat || 0.3).toFixed(2);
+
+                  document.getElementById('reflectivity').value = mesh.material.reflectivity || 0.5;
+                  document.getElementById('reflectivityValue').textContent = (mesh.material.reflectivity || 0.5).toFixed(2);
+              }
+          }
+      }
+
+      // 隐藏材质控制面板
+      hideMaterialControls() {
+          const controls = document.getElementById('materialControls');
+          if (controls) {
+              controls.style.display = 'none';
+          }
+      }
+
+      // 检查图形边界并动态调整网格大小
      checkAndUpdateGrid() {
          if (!this.selectedShape) return;
          
@@ -4589,24 +4774,397 @@ class Shape3DViewer {
          }
      }
      
-     // 更新网格大小
-     updateGridSize(newSize) {
-         // 移除现有网格
-         const existingGrid = this.scene.children.find(child => child.type === 'GridHelper');
-         if (existingGrid) {
-             this.scene.remove(existingGrid);
-         }
-         
-         // 创建新的更大网格
-         const divisions = Math.max(40, Math.floor(newSize / 0.5));
-         const gridHelper = new THREE.GridHelper(newSize, divisions, 0x444444, 0x222222);
-         gridHelper.position.set(newSize/2, 0, newSize/2);
-         this.scene.add(gridHelper);
-         
-         // 显示提示信息
-          this.showTooltip(`网格已扩大至 ${newSize.toFixed(0)}x${newSize.toFixed(0)} 以适应图形大小`, 2000);
+      // 更新网格大小
+      updateGridSize(newSize) {
+          // 移除现有网格
+          const existingGrid = this.scene.children.find(child => child.type === 'GridHelper');
+          if (existingGrid) {
+              this.scene.remove(existingGrid);
+          }
+
+          // 获取当前网格颜色
+          const gridColorInput = document.getElementById('gridColor');
+          const gridColorHex = gridColorInput ? parseInt(gridColorInput.value.replace('#', '0x')) : 0x444444;
+
+          // 创建新的更大网格
+          const divisions = Math.max(40, Math.floor(newSize / 0.5));
+          const gridHelper = new THREE.GridHelper(newSize, divisions, gridColorHex, 0x222222);
+          gridHelper.position.set(newSize/2, 0, newSize/2);
+          this.scene.add(gridHelper);
+
+          // 显示提示信息
+           this.showTooltip(`网格已扩大至 ${newSize.toFixed(0)}x${newSize.toFixed(0)} 以适应图形大小`, 2000);
+       }
+
+      // 材质参数控制方法
+      updateSelectedShapeMaterial(param, value) {
+          if (!this.selectedShape || !this.selectedShape.material) return;
+
+          // 确保材质是独立的
+          if (!this.selectedShape.userData.ownMaterial) {
+              this.selectedShape.material = this.selectedShape.material.clone();
+              this.selectedShape.userData.ownMaterial = true;
+          }
+
+          switch(param) {
+              case 'metalness':
+                  this.selectedShape.material.metalness = value;
+                  break;
+              case 'roughness':
+                  this.selectedShape.material.roughness = value;
+                  break;
+              case 'opacity':
+                  this.selectedShape.material.opacity = value;
+                  this.selectedShape.material.transparent = value < 1;
+                  break;
+              case 'clearcoat':
+                  this.selectedShape.material.clearcoat = value;
+                  break;
+              case 'reflectivity':
+                  this.selectedShape.material.reflectivity = value;
+                  break;
+          }
       }
-      
+
+      resetSelectedShapeMaterial() {
+          if (!this.selectedShape || !this.selectedShape.material) return;
+
+          // 重置为默认值
+          document.getElementById('metalness').value = 0.15;
+          document.getElementById('metalnessValue').textContent = '0.15';
+          this.updateSelectedShapeMaterial('metalness', 0.15);
+
+          document.getElementById('roughness').value = 0.25;
+          document.getElementById('roughnessValue').textContent = '0.25';
+          this.updateSelectedShapeMaterial('roughness', 0.25);
+
+          document.getElementById('opacity').value = 0.95;
+          document.getElementById('opacityValue').textContent = '0.95';
+          this.updateSelectedShapeMaterial('opacity', 0.95);
+
+          document.getElementById('clearcoat').value = 0.3;
+          document.getElementById('clearcoatValue').textContent = '0.30';
+          this.updateSelectedShapeMaterial('clearcoat', 0.3);
+
+          document.getElementById('reflectivity').value = 0.5;
+          document.getElementById('reflectivityValue').textContent = '0.50';
+          this.updateSelectedShapeMaterial('reflectivity', 0.5);
+
+          this.showTooltip('材质参数已重置', 1500);
+      }
+
+      // 光照系统控制方法
+      updateMainLightIntensity(value) {
+          const directionalLight = this.scene.children.find(child => child.type === 'DirectionalLight');
+          if (directionalLight) {
+              directionalLight.intensity = value;
+          }
+      }
+
+      updateAmbientLightIntensity(value) {
+          const ambientLight = this.scene.children.find(child => child.type === 'AmbientLight');
+          if (ambientLight) {
+              ambientLight.intensity = value;
+          }
+      }
+
+      updateMainLightColor(colorHex) {
+          const color = parseInt(colorHex.replace('#', '0x'));
+          const directionalLight = this.scene.children.find(child => child.type === 'DirectionalLight');
+          if (directionalLight) {
+              directionalLight.color.setHex(color);
+          }
+      }
+
+      updateLightPosition() {
+          const x = parseFloat(document.getElementById('lightPositionX').value);
+          const y = parseFloat(document.getElementById('lightPositionY').value);
+          const z = parseFloat(document.getElementById('lightPositionZ').value);
+
+          const directionalLight = this.scene.children.find(child => child.type === 'DirectionalLight');
+          if (directionalLight) {
+              directionalLight.position.set(x, y, z);
+          }
+      }
+
+      resetLighting() {
+          // 重置主光源
+          document.getElementById('mainLightIntensity').value = 1.2;
+          document.getElementById('mainLightIntensityValue').textContent = '1.2';
+          this.updateMainLightIntensity(1.2);
+
+          document.getElementById('ambientLightIntensity').value = 0.5;
+          document.getElementById('ambientLightIntensityValue').textContent = '0.5';
+          this.updateAmbientLightIntensity(0.5);
+
+          document.getElementById('mainLightColor').value = '#ffffff';
+          document.getElementById('mainLightColorValue').textContent = '#ffffff';
+          this.updateMainLightColor('#ffffff');
+
+          document.getElementById('lightPositionX').value = 15;
+          document.getElementById('lightPositionXValue').textContent = '15';
+          document.getElementById('lightPositionY').value = 15;
+          document.getElementById('lightPositionYValue').textContent = '15';
+          document.getElementById('lightPositionZ').value = 10;
+          document.getElementById('lightPositionZValue').textContent = '10';
+          this.updateLightPosition();
+
+          this.showTooltip('光照设置已重置', 1500);
+      }
+
+      // 环境设置方法
+      updateBackgroundColor(colorHex) {
+          const color = parseInt(colorHex.replace('#', '0x'));
+          this.scene.background = new THREE.Color(color);
+      }
+
+      updateGridColor(colorHex) {
+          const color = parseInt(colorHex.replace('#', '0x'));
+          const grid = this.scene.children.find(child => child.type === 'GridHelper');
+          if (grid) {
+              const size = grid.geometry.parameters ? grid.geometry.parameters.size : 20;
+              const divisions = grid.geometry.parameters ? grid.geometry.parameters.divisions : 40;
+              this.scene.remove(grid);
+
+              const newGrid = new THREE.GridHelper(size, divisions, color, 0x222222);
+              newGrid.position.copy(grid.position);
+              this.scene.add(newGrid);
+          }
+      }
+
+      resetEnvironment() {
+          document.getElementById('backgroundColor').value = '#f0f0f0';
+          document.getElementById('backgroundColorValue').textContent = '#f0f0f0';
+          this.updateBackgroundColor('#f0f0f0');
+
+          document.getElementById('gridColor').value = '#444444';
+          document.getElementById('gridColorValue').textContent = '#444444';
+          this.updateGridColor('#444444');
+
+          document.getElementById('gridSize').value = 20;
+          document.getElementById('gridSizeValue').textContent = '20';
+          this.updateGridSize(20);
+
+          this.showTooltip('环境设置已重置', 1500);
+      }
+
+      // 图形尺寸参数方法
+      showGeometryControls() {
+          const controls = document.getElementById('geometryControls');
+          const geometryParams = document.getElementById('geometryParams');
+          const geometrySliders = document.getElementById('geometrySliders');
+
+          if (controls) {
+              controls.style.display = 'block';
+
+              if (this.selectedShape) {
+                  const type = this.selectedShape.userData.type;
+                  let paramsHtml = '';
+
+                  switch(type) {
+                      case 'cube':
+                          paramsHtml = '立方体参数: 宽度、高度、深度';
+                          break;
+                      case 'sphere':
+                          paramsHtml = '球体参数: 半径';
+                          break;
+                      case 'cylinder':
+                          paramsHtml = '圆柱体参数: 半径、高度';
+                          break;
+                      case 'cone':
+                          paramsHtml = '圆锥体参数: 半径、高度';
+                          break;
+                      case 'pyramid':
+                          paramsHtml = '四角锥参数: 半径、高度';
+                          break;
+                      case 'torus':
+                          paramsHtml = '环形体参数: 半径、管道半径';
+                          break;
+                      case 'dodecahedron':
+                          paramsHtml = '十二面体参数: 半径';
+                          break;
+                      case 'icosahedron':
+                          paramsHtml = '二十面体参数: 半径';
+                          break;
+                      default:
+                          paramsHtml = '未知图形类型';
+                  }
+
+                  geometryParams.innerHTML = `<strong>图形类型:</strong> ${this.selectedShape.userData.type}<br><strong>可用参数:</strong> ${paramsHtml}`;
+
+                  // 生成对应的滑块
+                  geometrySliders.innerHTML = this.generateGeometrySliders(type);
+              }
+          }
+      }
+
+      hideGeometryControls() {
+          const controls = document.getElementById('geometryControls');
+          if (controls) {
+              controls.style.display = 'none';
+          }
+      }
+
+      generateGeometrySliders(type) {
+          let slidersHtml = '';
+
+          switch(type) {
+              case 'cube':
+                  slidersHtml = `
+                      <div style="margin-bottom: 8px;">
+                          <label style="font-size: 12px;">宽度:</label>
+                          <div class="slider-container">
+                              <input type="range" id="geoWidth" min="0.5" max="5" step="0.1" value="2" style="width: 100%;">
+                              <span class="slider-value" id="geoWidthValue">2.0</span>
+                          </div>
+                      </div>
+                      <div style="margin-bottom: 8px;">
+                          <label style="font-size: 12px;">高度:</label>
+                          <div class="slider-container">
+                              <input type="range" id="geoHeight" min="0.5" max="5" step="0.1" value="2" style="width: 100%;">
+                              <span class="slider-value" id="geoHeightValue">2.0</span>
+                          </div>
+                      </div>
+                      <div style="margin-bottom: 8px;">
+                          <label style="font-size: 12px;">深度:</label>
+                          <div class="slider-container">
+                              <input type="range" id="geoDepth" min="0.5" max="5" step="0.1" value="2" style="width: 100%;">
+                              <span class="slider-value" id="geoDepthValue">2.0</span>
+                          </div>
+                      </div>
+                  `;
+                  break;
+              case 'sphere':
+                  slidersHtml = `
+                      <div style="margin-bottom: 8px;">
+                          <label style="font-size: 12px;">半径:</label>
+                          <div class="slider-container">
+                              <input type="range" id="geoRadius" min="0.5" max="3" step="0.1" value="1.5" style="width: 100%;">
+                              <span class="slider-value" id="geoRadiusValue">1.5</span>
+                          </div>
+                      </div>
+                  `;
+                  break;
+              case 'cylinder':
+              case 'cone':
+              case 'pyramid':
+                  slidersHtml = `
+                      <div style="margin-bottom: 8px;">
+                          <label style="font-size: 12px;">半径:</label>
+                          <div class="slider-container">
+                              <input type="range" id="geoRadius" min="0.5" max="3" step="0.1" value="1" style="width: 100%;">
+                              <span class="slider-value" id="geoRadiusValue">1.0</span>
+                          </div>
+                      </div>
+                      <div style="margin-bottom: 8px;">
+                          <label style="font-size: 12px;">高度:</label>
+                          <div class="slider-container">
+                              <input type="range" id="geoHeight" min="0.5" max="6" step="0.1" value="3" style="width: 100%;">
+                              <span class="slider-value" id="geoHeightValue">3.0</span>
+                          </div>
+                      </div>
+                  `;
+                  break;
+              case 'torus':
+                  slidersHtml = `
+                      <div style="margin-bottom: 8px;">
+                          <label style="font-size: 12px;">半径:</label>
+                          <div class="slider-container">
+                              <input type="range" id="geoRadius" min="0.5" max="3" step="0.1" value="1.5" style="width: 100%;">
+                              <span class="slider-value" id="geoRadiusValue">1.5</span>
+                          </div>
+                      </div>
+                      <div style="margin-bottom: 8px;">
+                          <label style="font-size: 12px;">管道半径:</label>
+                          <div class="slider-container">
+                              <input type="range" id="geoTube" min="0.1" max="1" step="0.05" value="0.5" style="width: 100%;">
+                              <span class="slider-value" id="geoTubeValue">0.5</span>
+                          </div>
+                      </div>
+                  `;
+                  break;
+              case 'dodecahedron':
+              case 'icosahedron':
+                  slidersHtml = `
+                      <div style="margin-bottom: 8px;">
+                          <label style="font-size: 12px;">半径:</label>
+                          <div class="slider-container">
+                              <input type="range" id="geoRadius" min="0.5" max="3" step="0.1" value="1.5" style="width: 100%;">
+                              <span class="slider-value" id="geoRadiusValue">1.5</span>
+                          </div>
+                      </div>
+                  `;
+                  break;
+          }
+
+          return slidersHtml;
+      }
+
+      applyGeometryChanges() {
+          if (!this.selectedShape) return;
+
+          const type = this.selectedShape.userData.type;
+          let newGeometry;
+
+          switch(type) {
+              case 'cube':
+                  const width = parseFloat(document.getElementById('geoWidth').value);
+                  const height = parseFloat(document.getElementById('geoHeight').value);
+                  const depth = parseFloat(document.getElementById('geoDepth').value);
+                  newGeometry = new THREE.BoxGeometry(width, height, depth);
+                  break;
+              case 'sphere':
+                  const radius = parseFloat(document.getElementById('geoRadius').value);
+                  newGeometry = new THREE.SphereGeometry(radius, 32, 32);
+                  break;
+              case 'cylinder':
+                  const cylRadius = parseFloat(document.getElementById('geoRadius').value);
+                  const cylHeight = parseFloat(document.getElementById('geoHeight').value);
+                  newGeometry = new THREE.CylinderGeometry(cylRadius, cylRadius, cylHeight, 32);
+                  break;
+              case 'cone':
+              case 'pyramid':
+                  const coneRadius = parseFloat(document.getElementById('geoRadius').value);
+                  const coneHeight = parseFloat(document.getElementById('geoHeight').value);
+                  const segments = type === 'pyramid' ? 4 : 32;
+                  newGeometry = new THREE.ConeGeometry(coneRadius, coneHeight, segments);
+                  break;
+              case 'torus':
+                  const torusRadius = parseFloat(document.getElementById('geoRadius').value);
+                  const tubeRadius = parseFloat(document.getElementById('geoTube').value);
+                  newGeometry = new THREE.TorusGeometry(torusRadius, tubeRadius, 16, 100);
+                  break;
+              case 'dodecahedron':
+                  const dodecaRadius = parseFloat(document.getElementById('geoRadius').value);
+                  newGeometry = new THREE.DodecahedronGeometry(dodecaRadius);
+                  break;
+              case 'icosahedron':
+                  const icosaRadius = parseFloat(document.getElementById('geoRadius').value);
+                  newGeometry = new THREE.IcosahedronGeometry(icosaRadius);
+                  break;
+          }
+
+          if (newGeometry) {
+              // 优化新几何体
+              newGeometry = this.optimizeGeometry(newGeometry);
+
+              // 更新图形的几何体
+              this.selectedShape.geometry.dispose();
+              this.selectedShape.geometry = newGeometry;
+
+              // 重新居中几何体
+              this.recenterGeometry(this.selectedShape);
+
+              // 限制位置确保不低于网格
+              this.constrainShapePosition(this.selectedShape);
+
+              // 更新信息显示
+              this.updateShapeInfo(this.selectedShape);
+
+              this.showTooltip('图形尺寸已更新', 1500);
+          }
+      }
+
        // 执行真正的几何切割
        performGeometryCutting(mesh, cuttingPlane, capMode = 'seal') {
          if (!mesh || !mesh.geometry || !cuttingPlane) return;

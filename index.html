@@ -490,7 +490,7 @@
                             </div>
                             <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
                                 <h4 style="color: #333; margin-bottom: 8px;">🎨 颜色管理</h4>
-                                <p style="font-size: 14px; color: #666; margin: 0;">支持批量更新所有图形颜色，以及新图形颜色主题选择</p>
+                                <p style="font-size: 14px; color: #666; margin: 0;">支持批量更新所有图形颜色，以及图形颜色主题选择</p>
                             </div>
                             <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
                                 <h4 style="color: #333; margin-bottom: 8px;">💾 配置管理</h4>
@@ -935,7 +935,7 @@
             
             <div class="section-title">🎨 视觉效果</div>
             <div class="control-group">
-                <label for="colorSelect">新图形颜色主题:</label>
+                <label for="colorSelect">图形颜色主题:</label>
                 <select id="colorSelect">
                     <option value="blue">蓝色</option>
                     <option value="red">红色</option>
@@ -949,12 +949,145 @@
             <div class="control-group">
                 <label for="globalColorPicker">批量更新所有图形颜色:</label>
                 <div style="display: flex; align-items: center; gap: 8px;">
-                    <input type="color" id="globalColorPicker" value="#3742fa" 
-                           style="width: 40px; height: 30px; border: none; border-radius: 5px; cursor: pointer;" 
+                    <input type="color" id="globalColorPicker" value="#3742fa"
+                           style="width: 40px; height: 30px; border: none; border-radius: 5px; cursor: pointer;"
                            title="选择颜色">
-                    <button id="applyGlobalColor" 
+                    <button id="applyGlobalColor"
                             style="flex: 1; background: linear-gradient(45deg, #5352ed, #3742fa); color: white; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer; font-size: 12px;"
                             title="应用到所有图形">应用到所有</button>
+                </div>
+            </div>
+
+            <div class="control-group" id="materialControls" style="display: none;">
+                <label style="font-weight: bold; color: #333;">材质参数控制</label>
+                <div style="border: 1px solid #ddd; border-radius: 5px; padding: 10px; background: #f8f9fa; margin-top: 8px;">
+                    <div style="margin-bottom: 10px;">
+                        <label style="font-size: 12px; color: #666;">金属度 (Metalness):</label>
+                        <div class="slider-container">
+                            <input type="range" id="metalness" min="0" max="1" step="0.01" value="0.15" style="width: 100%;">
+                            <span class="slider-value" id="metalnessValue">0.15</span>
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <label style="font-size: 12px; color: #666;">粗糙度 (Roughness):</label>
+                        <div class="slider-container">
+                            <input type="range" id="roughness" min="0" max="1" step="0.01" value="0.25" style="width: 100%;">
+                            <span class="slider-value" id="roughnessValue">0.25</span>
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <label style="font-size: 12px; color: #666;">透明度 (Opacity):</label>
+                        <div class="slider-container">
+                            <input type="range" id="opacity" min="0" max="1" step="0.01" value="0.95" style="width: 100%;">
+                            <span class="slider-value" id="opacityValue">0.95</span>
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <label style="font-size: 12px; color: #666;">清漆层 (Clearcoat):</label>
+                        <div class="slider-container">
+                            <input type="range" id="clearcoat" min="0" max="1" step="0.01" value="0.3" style="width: 100%;">
+                            <span class="slider-value" id="clearcoatValue">0.30</span>
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <label style="font-size: 12px; color: #666;">反光度 (Reflectivity):</label>
+                        <div class="slider-container">
+                            <input type="range" id="reflectivity" min="0" max="1" step="0.01" value="0.5" style="width: 100%;">
+                            <span class="slider-value" id="reflectivityValue">0.50</span>
+                        </div>
+                    </div>
+                    <button id="resetMaterial" style="width: 100%; margin-top: 8px; background: #6c757d; color: white; border: none; padding: 6px; border-radius: 3px; font-size: 11px; cursor: pointer;">重置材质参数</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label style="font-weight: bold; color: #333;">光照系统</label>
+                <div style="border: 1px solid #ddd; border-radius: 5px; padding: 10px; background: #f8f9fa; margin-top: 8px;">
+                    <div style="margin-bottom: 10px;">
+                        <label style="font-size: 12px; color: #666;">主光源强度:</label>
+                        <div class="slider-container">
+                            <input type="range" id="mainLightIntensity" min="0" max="3" step="0.1" value="1.2" style="width: 100%;">
+                            <span class="slider-value" id="mainLightIntensityValue">1.2</span>
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <label style="font-size: 12px; color: #666;">环境光强度:</label>
+                        <div class="slider-container">
+                            <input type="range" id="ambientLightIntensity" min="0" max="2" step="0.1" value="0.5" style="width: 100%;">
+                            <span class="slider-value" id="ambientLightIntensityValue">0.5</span>
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <label style="font-size: 12px; color: #666;">主光源颜色:</label>
+                        <div style="display: flex; align-items: center; gap: 8px; margin-top: 5px;">
+                            <input type="color" id="mainLightColor" value="#ffffff"
+                                   style="width: 40px; height: 30px; border: none; border-radius: 5px; cursor: pointer;">
+                            <span id="mainLightColorValue" style="font-size: 11px; color: #666;">#ffffff</span>
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <label style="font-size: 12px; color: #666;">光源位置 X:</label>
+                        <div class="slider-container">
+                            <input type="range" id="lightPositionX" min="-30" max="30" step="1" value="15" style="width: 100%;">
+                            <span class="slider-value" id="lightPositionXValue">15</span>
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <label style="font-size: 12px; color: #666;">光源位置 Y:</label>
+                        <div class="slider-container">
+                            <input type="range" id="lightPositionY" min="0" max="50" step="1" value="15" style="width: 100%;">
+                            <span class="slider-value" id="lightPositionYValue">15</span>
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <label style="font-size: 12px; color: #666;">光源位置 Z:</label>
+                        <div class="slider-container">
+                            <input type="range" id="lightPositionZ" min="-30" max="30" step="1" value="10" style="width: 100%;">
+                            <span class="slider-value" id="lightPositionZValue">10</span>
+                        </div>
+                    </div>
+                    <button id="resetLighting" style="width: 100%; margin-top: 8px; background: #6c757d; color: white; border: none; padding: 6px; border-radius: 3px; font-size: 11px; cursor: pointer;">重置光照</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label style="font-weight: bold; color: #333;">环境设置</label>
+                <div style="border: 1px solid #ddd; border-radius: 5px; padding: 10px; background: #f8f9fa; margin-top: 8px;">
+                    <div style="margin-bottom: 10px;">
+                        <label style="font-size: 12px; color: #666;">背景颜色:</label>
+                        <div style="display: flex; align-items: center; gap: 8px; margin-top: 5px;">
+                            <input type="color" id="backgroundColor" value="#f0f0f0"
+                                   style="width: 40px; height: 30px; border: none; border-radius: 5px; cursor: pointer;">
+                            <span id="backgroundColorValue" style="font-size: 11px; color: #666;">#f0f0f0</span>
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <label style="font-size: 12px; color: #666;">网格颜色:</label>
+                        <div style="display: flex; align-items: center; gap: 8px; margin-top: 5px;">
+                            <input type="color" id="gridColor" value="#444444"
+                                   style="width: 40px; height: 30px; border: none; border-radius: 5px; cursor: pointer;">
+                            <span id="gridColorValue" style="font-size: 11px; color: #666;">#444444</span>
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <label style="font-size: 12px; color: #666;">网格大小:</label>
+                        <div class="slider-container">
+                            <input type="range" id="gridSize" min="10" max="50" step="5" value="20" style="width: 100%;">
+                            <span class="slider-value" id="gridSizeValue">20</span>
+                        </div>
+                    </div>
+                    <button id="resetEnvironment" style="width: 100%; margin-top: 8px; background: #6c757d; color: white; border: none; padding: 6px; border-radius: 3px; font-size: 11px; cursor: pointer;">重置环境</button>
+                </div>
+            </div>
+
+            <div class="control-group" id="geometryControls" style="display: none;">
+                <label style="font-weight: bold; color: #333;">图形尺寸参数</label>
+                <div style="border: 1px solid #ddd; border-radius: 5px; padding: 10px; background: #f8f9fa; margin-top: 8px;">
+                    <div id="geometryParams" style="font-size: 11px; color: #666; margin-bottom: 10px; padding: 8px; background: #e8f4fd; border-radius: 3px;">
+                        请先选择一个图形
+                    </div>
+                    <div id="geometrySliders"></div>
+                    <button id="applyGeometryChanges" style="width: 100%; margin-top: 8px; background: #28a745; color: white; border: none; padding: 6px; border-radius: 3px; font-size: 11px; cursor: pointer;">应用尺寸更改</button>
                 </div>
             </div>
             </div>
