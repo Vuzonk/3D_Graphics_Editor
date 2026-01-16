@@ -40,6 +40,32 @@ class Shape3DViewer {
         this.booleanToolShape = null; // 工具图形
         this.booleanOperation = 'subtract'; // 运算类型：subtract, union, intersect
 
+        // 顶点编辑模式相关
+        this.vertexEditMode = false; // 是否处于顶点编辑模式
+        this.vertexHandles = []; // 存储顶点控制点
+        this.vertexControlHandles = new Map(); // 顶点索引到控制点的映射
+        this.selectedVertexIndex = -1; // 当前选中的顶点索引
+        this.vertexTransformControls = null; // 顶点TransformControls
+
+        // 骨骼系统相关
+        this.boneEditMode = false; // 是否处于骨骼编辑模式
+        this.bones = []; // 存储所有骨骼
+        this.boneControls = new Map(); // 骨骼ID到TransformControls的映射
+        this.selectedBoneId = null; // 当前选中的骨骼ID
+        this.boneTransformControls = null; // 骨骼TransformControls
+        this.boneCounter = 0; // 骨骼计数器
+        this.boneWeights = new Map(); // 顶点到骨骼的权重映射
+
+        // 锚点系统相关
+        this.anchorEditMode = false; // 是否处于锚点编辑模式
+        this.anchors = []; // 存储所有锚点
+        this.anchorControls = new Map(); // 锚点ID到TransformControls的映射
+        this.selectedAnchorId = null; // 当前选中的锚点ID
+        this.anchorTransformControls = null; // 锚点TransformControls
+        this.anchorCounter = 0; // 锚点计数器
+        this.anchorInfluenceRadius = 0.5; // 锚点影响半径
+        this.anchorConnections = []; // 锚点之间的连接
+
         // 移动设备检测和性能优化
         this.isMobile = this.detectMobileDevice();
         this.performanceMode = this.isMobile ? 'mobile' : 'desktop';
@@ -252,7 +278,16 @@ class Shape3DViewer {
         });
         this.transformControls.setSize(0.75); // 设置控制手柄大小
         this.scene.add(this.transformControls);
-        
+
+        // 初始化顶点编辑TransformControls
+        this.initVertexTransformControls();
+
+        // 初始化骨骼TransformControls
+        this.initBoneTransformControls();
+
+        // 初始化锚点TransformControls
+        this.initAnchorTransformControls();
+
         // 初始化切割平面TransformControls
         this.initCuttingPlaneTransform();
         
@@ -536,7 +571,61 @@ class Shape3DViewer {
             }
         }, { passive: false });
     }
-    
+
+    initVertexTransformControls() {
+        this.vertexTransformControls = new TransformControls(this.camera, this.renderer.domElement);
+        this.vertexTransformControls.setMode('translate');
+        this.vertexTransformControls.setSize(0.5);
+        this.vertexTransformControls.visible = false;
+        this.vertexTransformControls.enabled = false;
+
+        this.vertexTransformControls.addEventListener('dragging-changed', (event) => {
+            this.controls.enabled = !event.value;
+        });
+
+        this.vertexTransformControls.addEventListener('objectChange', () => {
+            this.updateVertexFromTransform();
+        });
+
+        this.scene.add(this.vertexTransformControls);
+    }
+
+    initBoneTransformControls() {
+        this.boneTransformControls = new TransformControls(this.camera, this.renderer.domElement);
+        this.boneTransformControls.setMode('translate');
+        this.boneTransformControls.setSize(0.6);
+        this.boneTransformControls.visible = false;
+        this.boneTransformControls.enabled = false;
+
+        this.boneTransformControls.addEventListener('dragging-changed', (event) => {
+            this.controls.enabled = !event.value;
+        });
+
+        this.boneTransformControls.addEventListener('objectChange', () => {
+            this.updateBoneFromTransform();
+        });
+
+        this.scene.add(this.boneTransformControls);
+    }
+
+    initAnchorTransformControls() {
+        this.anchorTransformControls = new TransformControls(this.camera, this.renderer.domElement);
+        this.anchorTransformControls.setMode('translate');
+        this.anchorTransformControls.setSize(0.5);
+        this.anchorTransformControls.visible = false;
+        this.anchorTransformControls.enabled = false;
+
+        this.anchorTransformControls.addEventListener('dragging-changed', (event) => {
+            this.controls.enabled = !event.value;
+        });
+
+        this.anchorTransformControls.addEventListener('objectChange', () => {
+            this.updateAnchorFromTransform();
+        });
+
+        this.scene.add(this.anchorTransformControls);
+    }
+
     initCuttingPlaneTransform() {
         // 创建切割平面代理对象
         this.cuttingPlaneProxy = new THREE.Object3D();
@@ -1348,32 +1437,38 @@ class Shape3DViewer {
          this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
      }
      
-      handleMouseDown(event) {
-          if (event.button !== 0) return; // 只处理左键
+       handleMouseDown(event) {
+           if (event.button !== 0) return; // 只处理左键
 
-          this.updateMousePosition(event);
-          this.raycaster.setFromCamera(this.mouse, this.camera);
+           this.updateMousePosition(event);
+           this.raycaster.setFromCamera(this.mouse, this.camera);
 
-          // 获取所有可拖拽的对象
-           const draggableObjects = [];
-           this.shapes.forEach(mesh => {
-               draggableObjects.push(mesh);
-           });
+           // 获取所有可拖拽的对象
+            const draggableObjects = [];
+            this.shapes.forEach(mesh => {
+                draggableObjects.push(mesh);
+            });
 
-           // 添加拼合组到可拖拽对象
-           this.combinedShapes.forEach(group => {
-               draggableObjects.push(group);
-           });
+            // 添加拼合组到可拖拽对象
+            this.combinedShapes.forEach(group => {
+                draggableObjects.push(group);
+            });
 
-          const intersects = this.raycaster.intersectObjects(draggableObjects);
+           const intersects = this.raycaster.intersectObjects(draggableObjects);
 
-          if (intersects.length > 0) {
-              const selectedObject = intersects[0].object;
+           if (intersects.length > 0) {
+               const selectedObject = intersects[0].object;
 
-              // 启用拖拽功能（不是TransformControls的直接拖拽）
-              if (selectedObject !== this.selectedShape) {
-                  this.isDragging = true;
-                  this.selectedShape = selectedObject;
+               // 检查图形是否被锁定
+               if (selectedObject.userData.locked) {
+                   this.showTooltip('该图形已锁定，无法移动或变换', 2000);
+                   return;
+               }
+
+               // 启用拖拽功能（不是TransformControls的直接拖拽）
+               if (selectedObject !== this.selectedShape) {
+                   this.isDragging = true;
+                   this.selectedShape = selectedObject;
 
                   // 保存拖拽开始时的状态
                   this.dragStartState = this.saveShapeState(selectedObject);
@@ -1498,32 +1593,183 @@ class Shape3DViewer {
       }
      
       handleMouseClick(event) {
-          // 如果刚刚完成拖拽，不处理点击事件
-          if (this.isDragging) return;
+           // 如果刚刚完成拖拽，不处理点击事件
+           if (this.isDragging) return;
 
-          this.updateMousePosition(event);
-          this.raycaster.setFromCamera(this.mouse, this.camera);
-          const intersects = this.raycaster.intersectObjects(Array.from(this.shapes.values()));
+           // 顶点编辑模式下的点击处理
+           if (this.vertexEditMode) {
+               this.handleVertexEditClick(event);
+               return;
+           }
 
-          if (intersects.length > 0) {
-              if (this.cuttingMode) {
-                  this.handleCuttingClick(intersects);
-              } else {
-                  // 如果点击的不是已选中的图形，则选中它
-                  if (intersects[0].object !== this.selectedShape) {
-                      this.selectShape(intersects[0].object);
-                  }
+           // 骨骼编辑模式下的点击处理
+           if (this.boneEditMode) {
+               this.handleBoneEditClick(event);
+               return;
+           }
+
+           // 锚点编辑模式下的点击处理
+           if (this.anchorEditMode) {
+               this.handleAnchorEditClick(event);
+               return;
+           }
+
+           this.updateMousePosition(event);
+           this.raycaster.setFromCamera(this.mouse, this.camera);
+           const intersects = this.raycaster.intersectObjects(Array.from(this.shapes.values()));
+
+           if (intersects.length > 0) {
+               // 检查图形是否被锁定
+               if (intersects[0].object.userData.locked) {
+                   this.showTooltip('该图形已锁定，无法选中或修改', 2000);
+                   return;
+               }
+
+               if (this.cuttingMode) {
+                   this.handleCuttingClick(intersects);
+               } else {
+                   // 如果点击的不是已选中的图形，则选中它
+                   if (intersects[0].object !== this.selectedShape) {
+                       this.selectShape(intersects[0].object);
+                   }
+               }
+           } else {
+               // 点击空白区域，取消选择（但检查是否点击了TransformControls）
+               // TransformControls会自己处理点击，所以这里不需要额外处理
+               if (!this.cuttingMode) {
+                   this.deselectShape();
+               }
+           }
+       }
+
+      handleBoneEditClick(event) {
+          if (!this.boneEditMode) return;
+
+          const raycaster = new THREE.Raycaster();
+          const mouse = new THREE.Vector2();
+
+          mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+          mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+          raycaster.setFromCamera(mouse, this.camera);
+
+          // 检查是否点击了骨骼
+          const boneIntersects = raycaster.intersectObjects(this.bones, true);
+          if (boneIntersects.length > 0) {
+              let bone = boneIntersects[0].object;
+              // 如果点击的是骨骼的子对象，找到父骨骼
+              while (bone && !bone.userData.isBone && bone.parent) {
+                  bone = bone.parent;
               }
-          } else {
-              // 点击空白区域，取消选择（但检查是否点击了TransformControls）
-              // TransformControls会自己处理点击，所以这里不需要额外处理
-              if (!this.cuttingMode) {
-                  this.deselectShape();
+              if (bone && bone.userData.isBone) {
+                  this.selectBone(bone);
+                  return;
               }
           }
+
+          // 检查是否点击了图形（用于在图形表面创建骨骼）
+          const shapeIntersects = raycaster.intersectObjects(Array.from(this.shapes.values()));
+          if (shapeIntersects.length > 0 && shapeIntersects[0].object === this.selectedShape) {
+              this.addBoneAtPoint(shapeIntersects[0].point);
+          }
+      }
+
+      handleAnchorEditClick(event) {
+          if (!this.anchorEditMode) return;
+
+          const raycaster = new THREE.Raycaster();
+          const mouse = new THREE.Vector2();
+
+          mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+          mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+          raycaster.setFromCamera(mouse, this.camera);
+
+          // 检查是否点击了锚点
+          const anchorIntersects = raycaster.intersectObjects(this.anchors, true);
+          if (anchorIntersects.length > 0) {
+              let anchor = anchorIntersects[0].object;
+              // 如果点击的是锚点的子对象，找到父锚点
+              while (anchor && !anchor.userData.isAnchor && anchor.parent) {
+                  anchor = anchor.parent;
+              }
+              if (anchor && anchor.userData.isAnchor) {
+                  this.selectAnchor(anchor);
+                  return;
+              }
+          }
+
+          // 检查是否点击了图形（用于在图形表面创建锚点）
+          const shapeIntersects = raycaster.intersectObjects(Array.from(this.shapes.values()));
+          if (shapeIntersects.length > 0 && shapeIntersects[0].object === this.selectedShape) {
+              this.addAnchorAtPosition(shapeIntersects[0].point);
+          }
+      }
+
+      addBoneAtPoint(position) {
+          if (!this.selectedShape || !this.boneEditMode) return;
+
+          // 创建骨骼可视化
+          const boneLength = 1.0;
+          const boneGeometry = new THREE.CylinderGeometry(0.05, 0.05, boneLength, 8);
+          const boneMaterial = new THREE.MeshBasicMaterial({
+              color: 0xff6600,
+              transparent: true,
+              opacity: 0.8,
+              wireframe: false
+          });
+          const bone = new THREE.Mesh(boneGeometry, boneMaterial);
+
+          // 调整骨骼方向，使其垂直向上
+          bone.rotation.x = Math.PI / 2;
+
+          // 设置位置
+          bone.position.copy(position);
+
+          // 创建骨骼端点标记
+          const endpointGeometry = new THREE.SphereGeometry(0.08, 16, 16);
+          const endpointMaterial = new THREE.MeshBasicMaterial({
+              color: 0xff9900,
+              transparent: true,
+              opacity: 0.9
+          });
+          const endpoint = new THREE.Mesh(endpointGeometry, endpointMaterial);
+          endpoint.position.set(0, boneLength / 2, 0);
+          bone.add(endpoint);
+
+          // 创建骨骼起点标记
+          const startpointGeometry = new THREE.SphereGeometry(0.06, 16, 16);
+          const startpointMaterial = new THREE.MeshBasicMaterial({
+              color: 0xff4400,
+              transparent: true,
+              opacity: 0.9
+          });
+          const startpoint = new THREE.Mesh(startpointGeometry, startpointMaterial);
+          startpoint.position.set(0, -boneLength / 2, 0);
+          bone.add(startpoint);
+
+          // 设置用户数据
+          bone.userData = {
+              isBone: true,
+              boneId: ++this.boneCounter,
+              boneLength: boneLength,
+              shapeId: this.selectedShape.userData.id
+          };
+
+          this.bones.push(bone);
+          this.scene.add(bone);
+
+          this.showTooltip(`已创建骨骼 #${this.boneCounter}`, 1500);
+          this.updateBoneList();
       }
     
     selectShape(mesh) {
+        // 检查图形是否被锁定
+        if (mesh.userData.locked) {
+            this.showTooltip('该图形已锁定，无法选中或修改', 2000);
+            return;
+        }
+
         // 取消之前的选择
         this.deselectShape();
 
@@ -1568,6 +1814,21 @@ class Shape3DViewer {
     
     deselectShape() {
         if (this.selectedShape) {
+            // 如果在顶点编辑模式下，退出顶点编辑模式
+            if (this.vertexEditMode) {
+                this.exitVertexEditMode();
+            }
+
+            // 如果在骨骼编辑模式下，退出骨骼编辑模式
+            if (this.boneEditMode) {
+                this.exitBoneEditMode();
+            }
+
+            // 如果在锚点编辑模式下，退出锚点编辑模式
+            if (this.anchorEditMode) {
+                this.exitAnchorEditMode();
+            }
+
             // 移除选择框
             const selectionBox = this.scene.getObjectByName('selectionBox');
             if (selectionBox) this.scene.remove(selectionBox);
@@ -2292,7 +2553,8 @@ class Shape3DViewer {
             created: new Date().toLocaleTimeString(),
             originalScale: mesh.scale.clone(), // 保存原始缩放值
             isRainbow: material.userData && material.userData.isRainbow, // 标记是否为彩虹颜色
-            ownMaterial: true // 标记为拥有独立材质
+            ownMaterial: true, // 标记为拥有独立材质
+            locked: false // 默认为未锁定状态
         };
 
         // 应用所有切割平面
@@ -2666,59 +2928,99 @@ class Shape3DViewer {
             this.shapes.forEach((mesh, id) => {
                 const item = document.createElement('div');
                 item.className = 'shape-item';
-                
+
                 // 获取当前图形的颜色
                 const currentColor = mesh.material.color.getHexString();
-                
+
                 // 检查是否为彩虹颜色
                 const isRainbow = mesh.userData.isRainbow;
-                const rainbowButtonStyle = isRainbow ? 
-                    'background: linear-gradient(45deg, #ff0000, #ff8000, #ffff00, #80ff00, #00ff00, #00ff80, #00ffff, #0080ff, #0000ff, #8000ff, #ff00ff, #ff0080); color: white;' : 
+                const rainbowButtonStyle = isRainbow ?
+                    'background: linear-gradient(45deg, #ff0000, #ff8000, #ffff00, #80ff00, #00ff00, #00ff80, #00ffff, #0080ff, #0000ff, #8000ff, #ff00ff, #ff0080); color: white;' :
                     'background: #ddd; color: #666;';
-                
+
+                // 检查是否锁定
+                const isLocked = mesh.userData.locked || false;
+                const lockButtonStyle = isLocked ?
+                    'background: #ff4757; color: white;' :
+                    'background: #6c757d; color: white;';
+                const lockButtonText = isLocked ? '🔒' : '🔓';
+                const lockButtonTitle = isLocked ? '解锁图形' : '锁定图形';
+
                 item.innerHTML = `
-                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 5px; border: 1px solid #ddd; border-radius: 3px; margin-bottom: 3px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 5px; border: 1px solid #ddd; border-radius: 3px; margin-bottom: 3px; ${isLocked ? 'background: #fff3e0;' : ''}">
                         <span style="cursor: pointer; flex: 1;">${mesh.userData.type} #${id}</span>
                         <div style="display: flex; align-items: center; gap: 3px;">
-                            <input type="color" value="#${currentColor}" 
-                                   style="width: 25px; height: 20px; border: none; border-radius: 3px; cursor: pointer;" 
+                            <button
+                                    style="padding: 2px 4px; font-size: 10px; border: none; border-radius: 3px; cursor: pointer; ${lockButtonStyle}"
+                                    title="${lockButtonTitle}">${lockButtonText}</button>
+                            <input type="color" value="#${currentColor}"
+                                   style="width: 25px; height: 20px; border: none; border-radius: 3px; cursor: pointer;"
                                    title="选择颜色">
-                            <button 
+                            <button
                                     style="padding: 2px 4px; font-size: 10px; border: none; border-radius: 3px; cursor: pointer; ${rainbowButtonStyle}"
                                     title="${isRainbow ? '取消彩虹' : '设为彩虹'}">🌈</button>
-                            <button 
+                            <button
                                     style="padding: 2px 6px; font-size: 12px; background: #ff4757; color: white; border: none; border-radius: 3px; cursor: pointer;"
                                     title="删除图形">删除</button>
                         </div>
                     </div>
                 `;
-                
+
                 // 使用 addEventListener 而不是内联事件
                 const shapeSpan = item.querySelector('span');
                 shapeSpan.addEventListener('click', () => {
                     this.selectShape(mesh);
                 });
-                
+
+                const buttons = item.querySelectorAll('button');
+                const lockButton = buttons[0];
                 const colorInput = item.querySelector('input[type="color"]');
+                const rainbowButton = buttons[1];
+                const deleteButton = buttons[2];
+
+                lockButton.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.toggleShapeLock(id);
+                });
+
                 colorInput.addEventListener('change', (e) => {
                     this.updateShapeColor(id, e.target.value);
                 });
-                
-                const rainbowButton = item.querySelectorAll('button')[0];
+
                 rainbowButton.addEventListener('click', () => {
                     this.setShapeRainbow(id);
                 });
-                
-                const deleteButton = item.querySelectorAll('button')[1];
+
                 deleteButton.addEventListener('click', () => {
                     this.removeShape(id);
                 });
-                
+
                 list.appendChild(item);
             });
         }
     }
-    
+
+    toggleShapeLock(id) {
+        const mesh = this.shapes.get(id);
+        if (!mesh) return;
+
+        const isLocked = mesh.userData.locked || false;
+        mesh.userData.locked = !isLocked;
+
+        if (mesh.userData.locked) {
+            // 如果图形被锁定，先取消选择
+            if (this.selectedShape === mesh) {
+                this.deselectShape();
+            }
+            this.showTooltip(`图形 #${id} 已锁定`, 1500);
+        } else {
+            this.showTooltip(`图形 #${id} 已解锁`, 1500);
+        }
+
+        // 更新图形列表显示
+        this.updateShapesList();
+    }
+
     setupEventListeners() {
         // 图形选择 - 移除自动创建，只在点击添加按钮时创建
         // document.getElementById('shapeSelect').addEventListener('change', (e) => {
@@ -3320,6 +3622,14 @@ class Shape3DViewer {
             });
         }
 
+        // 配置文件搜索
+        const configSearchInput = document.getElementById('configSearchInput');
+        if (configSearchInput) {
+            configSearchInput.addEventListener('input', (e) => {
+                this.filterConfigsByKeyword(e.target.value);
+            });
+        }
+
         // 键盘事件支持
         document.addEventListener('keydown', (e) => {
             // Escape键关闭对话框
@@ -3354,6 +3664,68 @@ class Shape3DViewer {
         if (cancelBooleanBtn) {
             cancelBooleanBtn.addEventListener('click', () => {
                 this.cancelBooleanOperation();
+            });
+        }
+
+        // 顶点编辑模式事件监听器
+        const toggleVertexEditBtn = document.getElementById('toggleVertexEdit');
+        if (toggleVertexEditBtn) {
+            toggleVertexEditBtn.addEventListener('click', () => {
+                this.toggleVertexEditMode();
+            });
+        }
+
+        // 骨骼编辑模式事件监听器
+        const toggleBoneEditBtn = document.getElementById('toggleBoneEdit');
+        if (toggleBoneEditBtn) {
+            toggleBoneEditBtn.addEventListener('click', () => {
+                this.toggleBoneEditMode();
+            });
+        }
+
+        const addBoneBtn = document.getElementById('addBone');
+        if (addBoneBtn) {
+            addBoneBtn.addEventListener('click', () => {
+                this.addBone();
+            });
+        }
+
+        const deleteSelectedBoneBtn = document.getElementById('deleteSelectedBone');
+        if (deleteSelectedBoneBtn) {
+            deleteSelectedBoneBtn.addEventListener('click', () => {
+                this.deleteSelectedBone();
+            });
+        }
+
+        // 锚点编辑模式事件监听器
+        const toggleAnchorEditBtn = document.getElementById('toggleAnchorEdit');
+        if (toggleAnchorEditBtn) {
+            toggleAnchorEditBtn.addEventListener('click', () => {
+                this.toggleAnchorEditMode();
+            });
+        }
+
+        const addAnchorBtn = document.getElementById('addAnchor');
+        if (addAnchorBtn) {
+            addAnchorBtn.addEventListener('click', () => {
+                this.addRandomAnchor();
+            });
+        }
+
+        const deleteSelectedAnchorBtn = document.getElementById('deleteSelectedAnchor');
+        if (deleteSelectedAnchorBtn) {
+            deleteSelectedAnchorBtn.addEventListener('click', () => {
+                this.deleteSelectedAnchor();
+            });
+        }
+
+        const anchorInfluenceRadiusSlider = document.getElementById('anchorInfluenceRadius');
+        const anchorInfluenceRadiusValue = document.getElementById('anchorInfluenceRadiusValue');
+        if (anchorInfluenceRadiusSlider && anchorInfluenceRadiusValue) {
+            anchorInfluenceRadiusSlider.addEventListener('input', () => {
+                const value = parseFloat(anchorInfluenceRadiusSlider.value);
+                anchorInfluenceRadiusValue.textContent = value.toFixed(1);
+                this.setAnchorInfluenceRadius(value);
             });
         }
 
@@ -3539,7 +3911,8 @@ class Shape3DViewer {
                     scale: mesh.scale.toArray(),
                     color: mesh.material.color.getHex(),
                     visible: mesh.visible,
-                    parameters: mesh.userData.parameters || {}
+                    parameters: mesh.userData.parameters || {},
+                    locked: mesh.userData.locked || false
                 };
                 config.shapes.push(shapeData);
             });
@@ -3728,6 +4101,12 @@ class Shape3DViewer {
         // 清空现有列表
         configList.innerHTML = '';
         this.configFiles.clear();
+
+        // 清空搜索框
+        const configSearchInput = document.getElementById('configSearchInput');
+        if (configSearchInput) {
+            configSearchInput.value = '';
+        }
 
         // 切换到自定义配置文件夹模式
         this.useDefaultConfigPath = false;
@@ -4221,6 +4600,8 @@ class Shape3DViewer {
             mesh.rotation.fromArray(shapeData.rotation || [0, 0, 0]);
             mesh.scale.fromArray(shapeData.scale || [1, 1, 1]);
             mesh.visible = shapeData.visible !== undefined ? shapeData.visible : true;
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
 
             // 设置用户数据 - 自动适配重名图形
             let shapeId = shapeData.id || this.generateShapeId();
@@ -4248,7 +4629,10 @@ class Shape3DViewer {
                 id: shapeId,
                 type: shapeData.type,
                 parameters: params,
-                originalScale: mesh.scale.clone()
+                originalScale: mesh.scale.clone(),
+                isRainbow: false,
+                ownMaterial: true,
+                locked: shapeData.locked || false
             };
 
             // 重新居中几何体
@@ -4321,6 +4705,13 @@ class Shape3DViewer {
     async loadConfigsFromDefaultFolder() {
         try {
             console.log('尝试从默认配置文件夹加载:', this.defaultConfigPath);
+
+            // 清空搜索框
+            const configSearchInput = document.getElementById('configSearchInput');
+            if (configSearchInput) {
+                configSearchInput.value = '';
+            }
+
             this.updateConfigListPlaceholder('loading');
 
             // 尝试获取configs文件夹下的文件列表
@@ -4476,6 +4867,159 @@ class Shape3DViewer {
         }
     }
 
+    // 根据关键字过滤配置文件
+    filterConfigsByKeyword(keyword) {
+        const configList = document.getElementById('configList');
+        if (!configList) return;
+
+        // 如果关键字为空，显示所有配置
+        if (!keyword || keyword.trim() === '') {
+            this.refreshConfigListDisplay();
+            return;
+        }
+
+        // 转换为小写以便不区分大小写搜索
+        const searchKeyword = keyword.toLowerCase().trim();
+
+        // 过滤配置文件
+        const filteredConfigs = [];
+        this.configFiles.forEach((config, key) => {
+            // 获取文件名（去掉路径）
+            const filename = key.split('/').pop();
+
+            // 检查文件名是否匹配关键字
+            if (filename.toLowerCase().includes(searchKeyword)) {
+                filteredConfigs.push({
+                    filename: filename,
+                    config: config,
+                    folderPath: key.includes('/') ? key.substring(0, key.lastIndexOf('/')) : '',
+                    uniqueKey: key
+                });
+            }
+
+            // 也可以搜索配置中的图形类型
+            if (config.shapes && config.shapes.length > 0) {
+                const shapeTypes = config.shapes.map(s => s.type || '').join(' ');
+                if (shapeTypes.toLowerCase().includes(searchKeyword)) {
+                    if (!filteredConfigs.find(f => f.uniqueKey === key)) {
+                        filteredConfigs.push({
+                            filename: filename,
+                            config: config,
+                            folderPath: key.includes('/') ? key.substring(0, key.lastIndexOf('/')) : '',
+                            uniqueKey: key
+                        });
+                    }
+                }
+            }
+        });
+
+        // 清空列表
+        configList.innerHTML = '';
+
+        // 显示过滤后的配置
+        if (filteredConfigs.length > 0) {
+            // 按文件夹分组显示
+            const filesByFolder = new Map();
+            filteredConfigs.forEach(item => {
+                const folderPath = item.folderPath || '根目录';
+                if (!filesByFolder.has(folderPath)) {
+                    filesByFolder.set(folderPath, []);
+                }
+                filesByFolder.get(folderPath).push(item);
+            });
+
+            // 按文件夹分组显示
+            filesByFolder.forEach((configs, folderPath) => {
+                // 添加文件夹标题
+                const folderHeader = document.createElement('div');
+                folderHeader.className = 'folder-header';
+                folderHeader.style.cssText = `
+                    background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+                    padding: 8px 12px;
+                    margin: 10px 0 5px 0;
+                    border-radius: 5px;
+                    border-left: 4px solid #ff9800;
+                    font-weight: bold;
+                    color: #e65100;
+                    font-size: 12px;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                `;
+
+                const folderIcon = folderPath === '根目录' ? '🔍' : '🔍';
+                const displayPath = folderPath === '根目录' ? '根目录' : folderPath;
+                const fileCount = configs.length;
+
+                folderHeader.innerHTML = `${folderIcon} ${displayPath} (搜索结果: ${fileCount} 个文件)`;
+                configList.appendChild(folderHeader);
+
+                // 添加该文件夹下的配置文件
+                configs.sort((a, b) => a.filename.localeCompare(b.filename));
+                configs.forEach(item => {
+                    this.addConfigToList(item.filename, item.config, item.folderPath, item.uniqueKey);
+                });
+            });
+        } else {
+            // 显示没有搜索结果
+            const noResults = document.createElement('div');
+            noResults.style.cssText = `
+                padding: 20px;
+                text-align: center;
+                color: #999;
+                font-size: 13px;
+            `;
+            noResults.innerHTML = `
+                <div style="font-size: 24px; margin-bottom: 8px;">🔍</div>
+                <div>未找到匹配的配置文件</div>
+                <div style="font-size: 11px; margin-top: 4px;">请尝试其他关键字</div>
+            `;
+            configList.appendChild(noResults);
+        }
+    }
+
+    // 刷新配置列表显示（不重新加载）
+    refreshConfigListDisplay() {
+        if (this.useDefaultConfigPath) {
+            // 如果使用默认路径，重新加载并显示
+            this.loadConfigsFromDefaultFolder().then(configs => {
+                if (configs && configs.length > 0) {
+                    // 已经在loadConfigsFromDefaultFolder中调用了displayConfigsFromList
+                }
+            });
+        } else {
+            // 如果使用自定义路径，重新遍历configFiles并显示
+            const configList = document.getElementById('configList');
+            if (configList) {
+                configList.innerHTML = '';
+            }
+
+            const allConfigs = [];
+            this.configFiles.forEach((config, key) => {
+                const filename = key.split('/').pop();
+                const folderPath = key.includes('/') ? key.substring(0, key.lastIndexOf('/')) : '';
+                allConfigs.push({
+                    filename: filename,
+                    config: config,
+                    folderPath: folderPath,
+                    uniqueKey: key
+                });
+            });
+
+            // 按文件夹分组显示
+            const filesByFolder = new Map();
+            allConfigs.forEach(item => {
+                const folderPath = item.folderPath || '根目录';
+                if (!filesByFolder.has(folderPath)) {
+                    filesByFolder.set(folderPath, []);
+                }
+                filesByFolder.get(folderPath).push(item);
+            });
+
+            this.displayConfigsByFolder(allConfigs, filesByFolder);
+        }
+    }
+
     // 手动刷新配置
     async refreshConfigs() {
         console.log('手动刷新配置...');
@@ -4484,6 +5028,12 @@ class Shape3DViewer {
         const configList = document.getElementById('configList');
         if (configList) {
             configList.innerHTML = '';
+        }
+
+        // 清空搜索框
+        const configSearchInput = document.getElementById('configSearchInput');
+        if (configSearchInput) {
+            configSearchInput.value = '';
         }
 
         const configs = await this.loadConfigsFromDefaultFolder();
@@ -6017,13 +6567,859 @@ class Shape3DViewer {
       cancelBooleanOperation() {
           this.booleanMainShape = null;
           this.booleanToolShape = null;
-          
+
           // 重置选择
           const mainShapeSelect = document.getElementById('booleanMainShape');
           const toolShapeSelect = document.getElementById('booleanToolShape');
-          
+
           if (mainShapeSelect) mainShapeSelect.value = '';
           if (toolShapeSelect) toolShapeSelect.value = '';
+      }
+
+      // ==================== 骨骼系统 ====================
+
+      toggleBoneEditMode() {
+          if (!this.selectedShape) {
+              this.showTooltip('请先选择一个图形', 2000);
+              return;
+          }
+
+          this.boneEditMode = !this.boneEditMode;
+
+          if (this.boneEditMode) {
+              this.enterBoneEditMode();
+          } else {
+              this.exitBoneEditMode();
+          }
+      }
+
+      enterBoneEditMode() {
+          this.showTooltip('进入骨骼编辑模式 - 点击"添加骨骼"按钮创建骨骼', 2000);
+
+          // 隐藏图形TransformControls
+          if (this.transformControls) {
+              this.transformControls.detach();
+              this.transformControls.enabled = false;
+              this.transformControls.visible = false;
+          }
+
+          // 显示骨骼
+          this.showBones();
+
+          // 更新UI
+          const btn = document.getElementById('toggleBoneEdit');
+          if (btn) {
+              btn.classList.add('mode-active');
+              btn.textContent = '退出骨骼编辑';
+          }
+
+          // 显示添加骨骼按钮
+          const addBoneBtn = document.getElementById('addBone');
+          if (addBoneBtn) {
+              addBoneBtn.style.display = 'block';
+          }
+
+          // 显示骨骼控制面板
+          const bonePanel = document.getElementById('boneControlPanel');
+          if (bonePanel) {
+              bonePanel.style.display = 'block';
+          }
+      }
+
+      exitBoneEditMode() {
+          this.showTooltip('退出骨骼编辑模式', 1500);
+
+          // 清除骨骼显示
+          this.clearBones();
+
+          // 取消骨骼TransformControls
+          if (this.boneTransformControls) {
+              this.boneTransformControls.detach();
+              this.boneTransformControls.enabled = false;
+              this.boneTransformControls.visible = false;
+          }
+
+          // 恢复图形TransformControls
+          if (this.selectedShape && this.transformControls) {
+              this.transformControls.attach(this.selectedShape);
+              this.transformControls.setMode('translate');
+              this.transformControls.enabled = true;
+              this.transformControls.visible = true;
+          }
+
+          // 更新UI
+          const btn = document.getElementById('toggleBoneEdit');
+          if (btn) {
+              btn.classList.remove('mode-active');
+              btn.textContent = '骨骼编辑';
+          }
+
+          // 隐藏添加骨骼按钮
+          const addBoneBtn = document.getElementById('addBone');
+          if (addBoneBtn) {
+              addBoneBtn.style.display = 'none';
+          }
+
+          // 隐藏骨骼控制面板
+          const bonePanel = document.getElementById('boneControlPanel');
+          if (bonePanel) {
+              bonePanel.style.display = 'none';
+          }
+      }
+
+      addBone() {
+          if (!this.selectedShape || !this.boneEditMode) return;
+
+          // 获取图形的边界框
+          const box = new THREE.Box3().setFromObject(this.selectedShape);
+          const center = new THREE.Vector3();
+          box.getCenter(center);
+
+          // 创建骨骼可视化
+          const boneLength = 1.0;
+          const boneGeometry = new THREE.CylinderGeometry(0.05, 0.05, boneLength, 8);
+          const boneMaterial = new THREE.MeshBasicMaterial({
+              color: 0xff6600,
+              transparent: true,
+              opacity: 0.8,
+              wireframe: false
+          });
+          const bone = new THREE.Mesh(boneGeometry, boneMaterial);
+
+          // 调整骨骼方向，使其垂直向上
+          bone.rotation.x = Math.PI / 2;
+
+          // 设置位置
+          bone.position.copy(center);
+
+          // 创建骨骼端点标记
+          const endpointGeometry = new THREE.SphereGeometry(0.08, 16, 16);
+          const endpointMaterial = new THREE.MeshBasicMaterial({
+              color: 0xff9900,
+              transparent: true,
+              opacity: 0.9
+          });
+          const endpoint = new THREE.Mesh(endpointGeometry, endpointMaterial);
+          endpoint.position.set(0, boneLength / 2, 0);
+          bone.add(endpoint);
+
+          // 创建骨骼起点标记
+          const startpointGeometry = new THREE.SphereGeometry(0.06, 16, 16);
+          const startpointMaterial = new THREE.MeshBasicMaterial({
+              color: 0xff4400,
+              transparent: true,
+              opacity: 0.9
+          });
+          const startpoint = new THREE.Mesh(startpointGeometry, startpointMaterial);
+          startpoint.position.set(0, -boneLength / 2, 0);
+          bone.add(startpoint);
+
+          // 设置用户数据
+          bone.userData = {
+              isBone: true,
+              boneId: ++this.boneCounter,
+              boneLength: boneLength,
+              shapeId: this.selectedShape.userData.id
+          };
+
+          this.bones.push(bone);
+          this.scene.add(bone);
+
+          this.showTooltip(`已创建骨骼 #${this.boneCounter}`, 1500);
+          this.updateBoneList();
+      }
+
+      showBones() {
+          this.bones.forEach(bone => {
+              bone.visible = true;
+          });
+      }
+
+      clearBones() {
+          this.bones.forEach(bone => {
+              this.scene.remove(bone);
+              bone.geometry.dispose();
+              bone.material.dispose();
+          });
+          this.bones = [];
+          this.boneControls.clear();
+          this.selectedBoneId = null;
+      }
+
+      selectBone(bone) {
+          if (!bone || !bone.userData.isBone) return;
+
+          this.selectedBoneId = bone.userData.boneId;
+
+          // 改变选中骨骼的颜色
+          this.bones.forEach(b => {
+              b.material.color.setHex(0xff6600);
+              b.children.forEach(child => {
+                  if (child.geometry.type === 'SphereGeometry') {
+                      if (child.position.y > 0) {
+                          child.material.color.setHex(0xff9900);
+                      } else {
+                          child.material.color.setHex(0xff4400);
+                      }
+                  }
+              });
+          });
+          bone.material.color.setHex(0x00ff00);
+          bone.children.forEach(child => {
+              child.material.color.setHex(0x00ff00);
+          });
+
+          // 使用TransformControls控制骨骼
+          if (this.boneTransformControls) {
+              this.boneTransformControls.detach();
+              this.boneTransformControls.attach(bone);
+              this.boneTransformControls.enabled = true;
+              this.boneTransformControls.visible = true;
+          }
+
+          this.showTooltip(`已选中骨骼 #${bone.userData.boneId}`, 1500);
+      }
+
+      updateBoneFromTransform() {
+          if (!this.selectedShape || !this.selectedBoneId) return;
+
+          const bone = this.bones.find(b => b.userData.boneId === this.selectedBoneId);
+          if (!bone) return;
+
+          // 根据骨骼位置影响图形顶点
+          this.applyBoneInfluence(bone);
+      }
+
+      applyBoneInfluence(bone) {
+          if (!this.selectedShape || !this.selectedShape.geometry) return;
+
+          const geometry = this.selectedShape.geometry;
+          const positionAttribute = geometry.attributes.position;
+
+          // 获取骨骼的世界位置
+          const boneWorldPos = new THREE.Vector3();
+          bone.getWorldPosition(boneWorldPos);
+
+          // 获取骨骼的旋转
+          const boneWorldQuat = new THREE.Quaternion();
+          bone.getWorldQuaternion(boneWorldQuat);
+
+          // 影响半径
+          const influenceRadius = 2.0;
+
+          // 遍历所有顶点
+          for (let i = 0; i < positionAttribute.count; i++) {
+              const vertex = new THREE.Vector3();
+              vertex.fromBufferAttribute(positionAttribute, i);
+
+              // 转换到世界坐标
+              const worldVertex = vertex.clone().applyMatrix4(this.selectedShape.matrixWorld);
+
+              // 计算顶点到骨骼的距离
+              const distance = worldVertex.distanceTo(boneWorldPos);
+
+              if (distance < influenceRadius) {
+                  // 计算影响权重（距离越近影响越大）
+                  const weight = 1.0 - (distance / influenceRadius);
+
+                  // 应用骨骼旋转
+                  if (weight > 0.1) {
+                      const originalLocalVertex = vertex.clone();
+                      const originalWorldVertex = worldVertex.clone();
+
+                      // 将顶点相对于骨骼中心应用旋转
+                      const relativePos = originalWorldVertex.clone().sub(boneWorldPos);
+                      const rotatedPos = relativePos.clone().applyQuaternion(boneWorldQuat);
+                      const newWorldPos = rotatedPos.clone().add(boneWorldPos);
+
+                      // 转换回局部坐标
+                      const newLocalPos = newWorldPos.applyMatrix4(this.selectedShape.matrixWorld.clone().invert());
+
+                      // 混合原始位置和变换位置
+                      const blendedPos = originalLocalVertex.clone().lerp(newLocalPos, weight * 0.3);
+
+                      positionAttribute.setXYZ(i, blendedPos.x, blendedPos.y, blendedPos.z);
+                  }
+              }
+          }
+
+          // 标记需要更新
+          positionAttribute.needsUpdate = true;
+
+          // 重新计算法线
+          geometry.computeVertexNormals();
+          geometry.computeBoundingSphere();
+          geometry.computeBoundingBox();
+
+          // 更新图形信息
+          this.updateShapeInfo(this.selectedShape);
+      }
+
+      deleteSelectedBone() {
+          if (!this.selectedBoneId) return;
+
+          const boneIndex = this.bones.findIndex(b => b.userData.boneId === this.selectedBoneId);
+          if (boneIndex === -1) return;
+
+          const bone = this.bones[boneIndex];
+          this.scene.remove(bone);
+          bone.geometry.dispose();
+          bone.material.dispose();
+
+          this.bones.splice(boneIndex, 1);
+          this.boneControls.delete(this.selectedBoneId);
+
+          // 取消TransformControls
+          if (this.boneTransformControls) {
+              this.boneTransformControls.detach();
+          }
+
+          this.selectedBoneId = null;
+          this.showTooltip('已删除骨骼', 1500);
+          this.updateBoneList();
+      }
+
+      updateBoneList() {
+          const boneList = document.getElementById('boneList');
+          if (!boneList) return;
+
+          boneList.innerHTML = this.bones.map(bone => `
+              <div class="bone-item" data-bone-id="${bone.userData.boneId}">
+                  <span>骨骼 #${bone.userData.boneId}</span>
+                  <button onclick="viewer.selectBoneById(${bone.userData.boneId})">选择</button>
+                  <button onclick="viewer.deleteBoneById(${bone.userData.boneId})" style="background: #dc3545;">删除</button>
+              </div>
+          `).join('');
+      }
+
+      selectBoneById(boneId) {
+          const bone = this.bones.find(b => b.userData.boneId === boneId);
+          if (bone) {
+              this.selectBone(bone);
+          }
+      }
+
+      deleteBoneById(boneId) {
+          this.selectedBoneId = boneId;
+          this.deleteSelectedBone();
+      }
+
+      // ==================== 锚点系统 ====================
+
+      toggleAnchorEditMode() {
+          if (!this.selectedShape) {
+              this.showTooltip('请先选择一个图形', 2000);
+              return;
+          }
+
+          this.anchorEditMode = !this.anchorEditMode;
+
+          if (this.anchorEditMode) {
+              this.enterAnchorEditMode();
+          } else {
+              this.exitAnchorEditMode();
+          }
+      }
+
+      enterAnchorEditMode() {
+          this.showTooltip('进入锚点编辑模式 - 点击"添加锚点"按钮在图形表面创建锚点', 2000);
+
+          // 隐藏图形TransformControls
+          if (this.transformControls) {
+              this.transformControls.detach();
+              this.transformControls.enabled = false;
+              this.transformControls.visible = false;
+          }
+
+          // 显示锚点
+          this.showAnchors();
+
+          // 更新UI
+          const btn = document.getElementById('toggleAnchorEdit');
+          if (btn) {
+              btn.classList.add('mode-active');
+              btn.textContent = '退出锚点编辑';
+          }
+
+          // 显示添加锚点按钮
+          const addAnchorBtn = document.getElementById('addAnchor');
+          if (addAnchorBtn) {
+              addAnchorBtn.style.display = 'block';
+          }
+
+          // 显示锚点控制面板
+          const anchorPanel = document.getElementById('anchorControlPanel');
+          if (anchorPanel) {
+              anchorPanel.style.display = 'block';
+          }
+      }
+
+      exitAnchorEditMode() {
+          this.showTooltip('退出锚点编辑模式', 1500);
+
+          // 清除锚点显示
+          this.clearAnchors();
+
+          // 取消锚点TransformControls
+          if (this.anchorTransformControls) {
+              this.anchorTransformControls.detach();
+              this.anchorTransformControls.enabled = false;
+              this.anchorTransformControls.visible = false;
+          }
+
+          // 恢复图形TransformControls
+          if (this.selectedShape && this.transformControls) {
+              this.transformControls.attach(this.selectedShape);
+              this.transformControls.setMode('translate');
+              this.transformControls.enabled = true;
+              this.transformControls.visible = true;
+          }
+
+          // 更新UI
+          const btn = document.getElementById('toggleAnchorEdit');
+          if (btn) {
+              btn.classList.remove('mode-active');
+              btn.textContent = '锚点编辑';
+          }
+
+          // 隐藏添加锚点按钮
+          const addAnchorBtn = document.getElementById('addAnchor');
+          if (addAnchorBtn) {
+              addAnchorBtn.style.display = 'none';
+          }
+
+          // 隐藏锚点控制面板
+          const anchorPanel = document.getElementById('anchorControlPanel');
+          if (anchorPanel) {
+              anchorPanel.style.display = 'none';
+          }
+      }
+
+      addAnchorAtPosition(position) {
+          if (!this.selectedShape || !this.anchorEditMode) return;
+
+          // 创建锚点可视化
+          const anchorGeometry = new THREE.OctahedronGeometry(0.12, 0);
+          const anchorMaterial = new THREE.MeshBasicMaterial({
+              color: 0x00ccff,
+              transparent: true,
+              opacity: 0.9,
+              wireframe: true
+          });
+          const anchor = new THREE.Mesh(anchorGeometry, anchorMaterial);
+
+          // 设置位置
+          anchor.position.copy(position);
+
+          // 创建锚点中心点
+          const centerGeometry = new THREE.SphereGeometry(0.05, 16, 16);
+          const centerMaterial = new THREE.MeshBasicMaterial({
+              color: 0x00ffff,
+              transparent: true,
+              opacity: 0.8
+          });
+          const center = new THREE.Mesh(centerGeometry, centerMaterial);
+          anchor.add(center);
+
+          // 设置用户数据
+          anchor.userData = {
+              isAnchor: true,
+              anchorId: ++this.anchorCounter,
+              shapeId: this.selectedShape.userData.id,
+              originalPosition: position.clone()
+          };
+
+          this.anchors.push(anchor);
+          this.scene.add(anchor);
+
+          this.showTooltip(`已创建锚点 #${this.anchorCounter}`, 1500);
+          this.updateAnchorList();
+      }
+
+      addRandomAnchor() {
+          if (!this.selectedShape || !this.anchorEditMode) return;
+
+          // 获取图形的边界框
+          const box = new THREE.Box3().setFromObject(this.selectedShape);
+          const size = new THREE.Vector3();
+          box.getSize(size);
+
+          // 在图形表面随机选择位置
+          const point = new THREE.Vector3(
+              (Math.random() - 0.5) * size.x + box.min.x + size.x / 2,
+              (Math.random() - 0.5) * size.y + box.min.y + size.y / 2,
+              (Math.random() - 0.5) * size.z + box.min.z + size.z / 2
+          );
+
+          // 找到图形表面最近的点
+          const raycaster = new THREE.Raycaster();
+          const direction = point.clone().sub(this.selectedShape.position).normalize();
+          raycaster.set(this.selectedShape.position.clone().add(direction.clone().multiplyScalar(100)), direction.clone().negate());
+          const intersects = raycaster.intersectObject(this.selectedShape);
+
+          if (intersects.length > 0) {
+              this.addAnchorAtPosition(intersects[0].point);
+          } else {
+              // 如果没有交点，使用随机点
+              this.addAnchorAtPosition(point);
+          }
+      }
+
+      showAnchors() {
+          this.anchors.forEach(anchor => {
+              anchor.visible = true;
+          });
+      }
+
+      clearAnchors() {
+          this.anchors.forEach(anchor => {
+              this.scene.remove(anchor);
+              anchor.geometry.dispose();
+              anchor.material.dispose();
+          });
+          this.anchors = [];
+          this.anchorControls.clear();
+          this.selectedAnchorId = null;
+          this.anchorConnections = [];
+      }
+
+      selectAnchor(anchor) {
+          if (!anchor || !anchor.userData.isAnchor) return;
+
+          this.selectedAnchorId = anchor.userData.anchorId;
+
+          // 改变选中锚点的颜色
+          this.anchors.forEach(a => {
+              a.material.color.setHex(0x00ccff);
+              a.children[0].material.color.setHex(0x00ffff);
+          });
+          anchor.material.color.setHex(0xff00ff);
+          anchor.children[0].material.color.setHex(0xff66ff);
+
+          // 使用TransformControls控制锚点
+          if (this.anchorTransformControls) {
+              this.anchorTransformControls.detach();
+              this.anchorTransformControls.attach(anchor);
+              this.anchorTransformControls.enabled = true;
+              this.anchorTransformControls.visible = true;
+          }
+
+          this.showTooltip(`已选中锚点 #${anchor.userData.anchorId}`, 1500);
+      }
+
+      updateAnchorFromTransform() {
+          if (!this.selectedShape || !this.selectedAnchorId) return;
+
+          const anchor = this.anchors.find(a => a.userData.anchorId === this.selectedAnchorId);
+          if (!anchor) return;
+
+          // 根据锚点位置影响图形顶点
+          this.applyAnchorInfluence(anchor);
+      }
+
+      applyAnchorInfluence(anchor) {
+          if (!this.selectedShape || !this.selectedShape.geometry) return;
+
+          const geometry = this.selectedShape.geometry;
+          const positionAttribute = geometry.attributes.position;
+
+          // 获取锚点的世界位置
+          const anchorWorldPos = anchor.position.clone();
+
+          // 获取原始位置
+          const originalPos = anchor.userData.originalPosition.clone();
+
+          // 计算偏移量
+          const offset = anchorWorldPos.clone().sub(originalPos);
+
+          // 遍历所有顶点
+          for (let i = 0; i < positionAttribute.count; i++) {
+              const vertex = new THREE.Vector3();
+              vertex.fromBufferAttribute(positionAttribute, i);
+
+              // 转换到世界坐标
+              const worldVertex = vertex.clone().applyMatrix4(this.selectedShape.matrixWorld);
+
+              // 计算顶点到锚点的距离
+              const distance = worldVertex.distanceTo(anchorWorldPos);
+
+              if (distance < this.anchorInfluenceRadius) {
+                  // 计算影响权重（使用平滑衰减）
+                  const normalizedDist = distance / this.anchorInfluenceRadius;
+                  const weight = Math.pow(1.0 - normalizedDist, 2);
+
+                  // 应用偏移
+                  if (weight > 0.01) {
+                      const transformedOffset = offset.clone().multiplyScalar(weight);
+
+                      // 转换回局部坐标
+                      const transformedOffsetLocal = transformedOffset.applyMatrix4(this.selectedShape.matrixWorld.clone().invert());
+
+                      const newVertex = vertex.clone().add(transformedOffsetLocal);
+                      positionAttribute.setXYZ(i, newVertex.x, newVertex.y, newVertex.z);
+                  }
+              }
+          }
+
+          // 标记需要更新
+          positionAttribute.needsUpdate = true;
+
+          // 重新计算法线
+          geometry.computeVertexNormals();
+          geometry.computeBoundingSphere();
+          geometry.computeBoundingBox();
+
+          // 更新图形信息
+          this.updateShapeInfo(this.selectedShape);
+      }
+
+      deleteSelectedAnchor() {
+          if (!this.selectedAnchorId) return;
+
+          const anchorIndex = this.anchors.findIndex(a => a.userData.anchorId === this.selectedAnchorId);
+          if (anchorIndex === -1) return;
+
+          const anchor = this.anchors[anchorIndex];
+          this.scene.remove(anchor);
+          anchor.geometry.dispose();
+          anchor.material.dispose();
+
+          this.anchors.splice(anchorIndex, 1);
+          this.anchorControls.delete(this.selectedAnchorId);
+
+          // 取消TransformControls
+          if (this.anchorTransformControls) {
+              this.anchorTransformControls.detach();
+          }
+
+          this.selectedAnchorId = null;
+          this.showTooltip('已删除锚点', 1500);
+          this.updateAnchorList();
+      }
+
+      updateAnchorList() {
+          const anchorList = document.getElementById('anchorList');
+          if (!anchorList) return;
+
+          anchorList.innerHTML = this.anchors.map(anchor => `
+              <div class="anchor-item" data-anchor-id="${anchor.userData.anchorId}">
+                  <span>锚点 #${anchor.userData.anchorId}</span>
+                  <button onclick="viewer.selectAnchorById(${anchor.userData.anchorId})">选择</button>
+                  <button onclick="viewer.deleteAnchorById(${anchor.userData.anchorId})" style="background: #dc3545;">删除</button>
+              </div>
+          `).join('');
+      }
+
+      selectAnchorById(anchorId) {
+          const anchor = this.anchors.find(a => a.userData.anchorId === anchorId);
+          if (anchor) {
+              this.selectAnchor(anchor);
+          }
+      }
+
+      deleteAnchorById(anchorId) {
+          this.selectedAnchorId = anchorId;
+          this.deleteSelectedAnchor();
+      }
+
+      setAnchorInfluenceRadius(radius) {
+          this.anchorInfluenceRadius = radius;
+          this.showTooltip(`锚点影响半径: ${radius.toFixed(2)}`, 1500);
+      }
+
+      toggleVertexEditMode() {
+          if (!this.selectedShape) {
+              this.showTooltip('请先选择一个图形', 2000);
+              return;
+          }
+
+          this.vertexEditMode = !this.vertexEditMode;
+
+          if (this.vertexEditMode) {
+              this.enterVertexEditMode();
+          } else {
+              this.exitVertexEditMode();
+          }
+      }
+
+      enterVertexEditMode() {
+          this.showTooltip('进入顶点编辑模式', 1500);
+
+          // 隐藏图形TransformControls
+          if (this.transformControls) {
+              this.transformControls.detach();
+              this.transformControls.enabled = false;
+              this.transformControls.visible = false;
+          }
+
+          // 显示顶点控制点
+          this.showVertexHandles();
+
+          // 更新UI
+          const btn = document.getElementById('toggleVertexEdit');
+          if (btn) {
+              btn.classList.add('mode-active');
+              btn.textContent = '退出顶点编辑';
+          }
+      }
+
+      exitVertexEditMode() {
+          this.showTooltip('退出顶点编辑模式', 1500);
+
+          // 清除顶点控制点
+          this.clearVertexHandles();
+
+          // 取消顶点TransformControls
+          if (this.vertexTransformControls) {
+              this.vertexTransformControls.detach();
+              this.vertexTransformControls.enabled = false;
+              this.vertexTransformControls.visible = false;
+          }
+
+          // 恢复图形TransformControls
+          if (this.selectedShape && this.transformControls) {
+              this.transformControls.attach(this.selectedShape);
+              this.transformControls.setMode('translate');
+              this.transformControls.enabled = true;
+              this.transformControls.visible = true;
+          }
+
+          // 更新UI
+          const btn = document.getElementById('toggleVertexEdit');
+          if (btn) {
+              btn.classList.remove('mode-active');
+              btn.textContent = '顶点编辑';
+          }
+      }
+
+      showVertexHandles() {
+          if (!this.selectedShape || !this.selectedShape.geometry) return;
+
+          const geometry = this.selectedShape.geometry;
+          const positionAttribute = geometry.attributes.position;
+
+          // 创建顶点控制点
+          for (let i = 0; i < positionAttribute.count; i++) {
+              const vertex = new THREE.Vector3();
+              vertex.fromBufferAttribute(positionAttribute, i);
+
+              // 应用图形的变换矩阵
+              vertex.applyMatrix4(this.selectedShape.matrixWorld);
+
+              // 创建顶点控制点小球
+              const handleGeometry = new THREE.SphereGeometry(0.08, 16, 16);
+              const handleMaterial = new THREE.MeshBasicMaterial({
+                  color: 0x00ff00,
+                  transparent: true,
+                  opacity: 0.8
+              });
+              const handle = new THREE.Mesh(handleGeometry, handleMaterial);
+              handle.position.copy(vertex);
+              handle.userData = {
+                  isVertexHandle: true,
+                  vertexIndex: i,
+                  originalLocalVertex: vertex.clone().applyMatrix4(this.selectedShape.matrixWorld.clone().invert())
+              };
+
+              this.vertexHandles.push(handle);
+              this.vertexControlHandles.set(i, handle);
+              this.scene.add(handle);
+          }
+      }
+
+      clearVertexHandles() {
+          // 移除所有顶点控制点
+          this.vertexHandles.forEach(handle => {
+              this.scene.remove(handle);
+              handle.geometry.dispose();
+              handle.material.dispose();
+          });
+
+          this.vertexHandles = [];
+          this.vertexControlHandles.clear();
+          this.selectedVertexIndex = -1;
+      }
+
+      selectVertexHandle(handle) {
+          if (!handle || !handle.userData.isVertexHandle) return;
+
+          this.selectedVertexIndex = handle.userData.vertexIndex;
+
+          // 改变选中顶点的颜色
+          this.vertexHandles.forEach(h => {
+              if (h.material.color.getHex() === 0xff0000) {
+                  h.material.color.setHex(0x00ff00);
+              }
+          });
+          handle.material.color.setHex(0xff0000);
+
+          // 使用TransformControls控制顶点
+          if (this.vertexTransformControls) {
+              this.vertexTransformControls.detach();
+              this.vertexTransformControls.attach(handle);
+              this.vertexTransformControls.enabled = true;
+              this.vertexTransformControls.visible = true;
+          }
+      }
+
+      updateVertexFromTransform() {
+          if (!this.selectedShape || this.selectedVertexIndex === -1) return;
+
+          const geometry = this.selectedShape.geometry;
+          const positionAttribute = geometry.attributes.position;
+
+          // 获取当前顶点控制点的世界坐标
+          const handle = this.vertexControlHandles.get(this.selectedVertexIndex);
+          if (!handle) return;
+
+          // 将世界坐标转换回图形的局部坐标
+          const localVertex = handle.position.clone().applyMatrix4(this.selectedShape.matrixWorld.clone().invert());
+
+          // 更新几何体的顶点位置
+          positionAttribute.setXYZ(this.selectedVertexIndex, localVertex.x, localVertex.y, localVertex.z);
+
+          // 标记属性为需要更新
+          positionAttribute.needsUpdate = true;
+
+          // 重新计算法线和边界框
+          geometry.computeVertexNormals();
+          geometry.computeBoundingSphere();
+          geometry.computeBoundingBox();
+
+          // 更新图形信息
+          this.updateShapeInfo(this.selectedShape);
+      }
+
+      handleVertexEditClick(event) {
+          if (!this.vertexEditMode) return;
+
+          const raycaster = new THREE.Raycaster();
+          const mouse = new THREE.Vector2();
+
+          mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+          mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+          raycaster.setFromCamera(mouse, this.camera);
+
+          const intersects = raycaster.intersectObjects(this.vertexHandles);
+
+          if (intersects.length > 0) {
+              const handle = intersects[0].object;
+              if (handle.userData.isVertexHandle) {
+                  this.selectVertexHandle(handle);
+              }
+          } else {
+              // 点击空白区域，取消顶点选择
+              if (this.vertexTransformControls) {
+                  this.vertexTransformControls.detach();
+              }
+              this.selectedVertexIndex = -1;
+
+              // 重置所有顶点颜色
+              this.vertexHandles.forEach(h => {
+                  h.material.color.setHex(0x00ff00);
+              });
+          }
       }
   }
 
