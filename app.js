@@ -3269,6 +3269,37 @@ class Shape3DViewer {
             });
         }
         
+        // 图形变换模式按钮
+        const setTranslateModeBtn = document.getElementById('setTranslateMode');
+        if (setTranslateModeBtn) {
+            setTranslateModeBtn.addEventListener('click', () => {
+                if (this.transformControls) {
+                    this.transformControls.setMode('translate');
+                    this.showTooltip('平移模式 (W)', 1000);
+                }
+            });
+        }
+        
+        const setRotateModeBtn = document.getElementById('setRotateMode');
+        if (setRotateModeBtn) {
+            setRotateModeBtn.addEventListener('click', () => {
+                if (this.transformControls) {
+                    this.transformControls.setMode('rotate');
+                    this.showTooltip('旋转模式 (E)', 1000);
+                }
+            });
+        }
+        
+        const setScaleModeBtn = document.getElementById('setScaleMode');
+        if (setScaleModeBtn) {
+            setScaleModeBtn.addEventListener('click', () => {
+                if (this.transformControls) {
+                    this.transformControls.setMode('scale');
+                    this.showTooltip('缩放模式 (R)', 1000);
+                }
+            });
+        }
+        
         // 快速设置切割方向按钮
         const quickCuttingXBtn = document.getElementById('setNormalX');
         if (quickCuttingXBtn) {
@@ -5139,37 +5170,62 @@ class Shape3DViewer {
          }
      }
      
-     // 显示图形位置控制面板
-     showShapePositionControls(mesh) {
-         const controls = document.getElementById('shapePositionControls');
-         if (controls) {
-             controls.style.display = 'block';
+      // 显示图形位置控制面板
+      showShapePositionControls(mesh) {
+          const controls = document.getElementById('shapePositionControls');
+          if (controls) {
+              controls.style.display = 'block';
+              
+              // 同时显示变换模式控制组
+              this.showTransformModeControls();
 
-             // 更新滑块值为当前图形的位置值
-             const positionValues = {
-                 'posX': mesh.position.x,
-                 'posY': mesh.position.y,
-                 'posZ': mesh.position.z
-             };
+              // 更新滑块值为当前图形的位置值
+              const positionValues = {
+                  'posX': mesh.position.x,
+                  'posY': mesh.position.y,
+                  'posZ': mesh.position.z
+              };
 
-             Object.entries(positionValues).forEach(([id, value]) => {
-                 const slider = document.getElementById(id);
-                 const valueDisplay = document.getElementById(id + 'Value');
-                 if (slider && valueDisplay) {
-                     slider.value = value;
-                     valueDisplay.textContent = value.toFixed(1);
-                 }
-             });
-         }
-     }
+              Object.entries(positionValues).forEach(([id, value]) => {
+                  const slider = document.getElementById(id);
+                  const valueDisplay = document.getElementById(id + 'Value');
+                  if (slider && valueDisplay) {
+                      slider.value = value;
+                      valueDisplay.textContent = value.toFixed(1);
+                  }
+              });
+          }
+      }
 
-     // 隐藏图形位置控制面板
-     hideShapePositionControls() {
-         const controls = document.getElementById('shapePositionControls');
-         if (controls) {
-             controls.style.display = 'none';
-         }
-     }
+      // 隐藏图形位置控制面板
+      hideShapePositionControls() {
+          const controls = document.getElementById('shapePositionControls');
+          if (controls) {
+              controls.style.display = 'none';
+          }
+          
+          // 同时隐藏变换模式控制组
+          const transformModeControls = document.getElementById('transformModeControls');
+          if (transformModeControls) {
+              transformModeControls.style.display = 'none';
+          }
+      }
+      
+      // 显示变换模式控制组
+      showTransformModeControls() {
+          const controls = document.getElementById('transformModeControls');
+          if (controls) {
+              controls.style.display = 'block';
+          }
+      }
+      
+      // 隐藏变换模式控制组
+      hideTransformModeControls() {
+          const controls = document.getElementById('transformModeControls');
+          if (controls) {
+              controls.style.display = 'none';
+          }
+      }
 
      // 更新图形位置
      updateShapePosition(axis, value) {
