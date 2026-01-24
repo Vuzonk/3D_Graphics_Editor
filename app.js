@@ -959,10 +959,9 @@ class Shape3DViewer {
         if (this.cuttingPreviewMode && this.cuttingPreviewScene) {
             this.updateCuttingPreview();
         }
-        }
     }
-    
-     applyCuttingPlaneFromControls() {
+
+    applyCuttingPlaneFromControls() {
          if (!this.activeCuttingPlane) return;
 
          // 保存所有图形的切割前状态
