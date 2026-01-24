@@ -96,6 +96,23 @@ class Shape3DViewer {
         this.cuttingPreviewStartAngle = 0;
         this.cuttingPreviewStartRotation = 0;
 
+        // 图形类型中文名称映射
+        this.shapeTypeNames = {
+            cube: '立方体',
+            sphere: '球体',
+            cylinder: '圆柱体',
+            cone: '圆锥体',
+            pyramid: '棱锥体',
+            torus: '圆环',
+            dodecahedron: '十二面体',
+            icosahedron: '二十面体'
+        };
+
+        // 配置文件列表分页
+        this.configListPageSize = 10;
+        this.configListCurrentPage = 1;
+        this.configListCurrentPages = {};
+
         console.log('开始初始化...');
         this.init();
         console.log('开始设置事件监听器...');
@@ -2578,6 +2595,7 @@ class Shape3DViewer {
         mesh.userData = {
             id: ++this.shapeCounter,
             type: shapeType,
+            name: this.generateUniqueName(shapeType),
             created: new Date().toLocaleTimeString(),
             originalScale: mesh.scale.clone(), // 保存原始缩放值
             isRainbow: material.userData && material.userData.isRainbow, // 标记是否为彩虹颜色
@@ -2600,7 +2618,88 @@ class Shape3DViewer {
         this.updateShapesList();
         return mesh;
     }
-    
+
+    getChineseTypeName(type) {
+        return this.shapeTypeNames[type] || type;
+    }
+
+    generateUniqueName(baseType) {
+        const chineseName = this.getChineseTypeName(baseType);
+        const existingNames = new Set();
+
+        this.shapes.forEach((mesh) => {
+            if (mesh.userData.name) {
+                existingNames.add(mesh.userData.name);
+            }
+        });
+
+        let counter = 1;
+        let uniqueName;
+
+        do {
+            uniqueName = `${chineseName}${counter}`;
+            counter++;
+        } while (existingNames.has(uniqueName));
+
+        return uniqueName;
+    }
+
+    renameShape(id) {
+        const mesh = this.shapes.get(id);
+        if (!mesh) return;
+
+        const currentName = mesh.userData.name || this.getChineseTypeName(mesh.userData.type);
+        const newName = prompt('请输入新的图形名称：', currentName);
+
+        if (newName === null) return;
+
+        if (!newName || newName.trim() === '') {
+            alert('名称不能为空！');
+            return;
+        }
+
+        const trimmedName = newName.trim();
+
+        const existingNames = new Set();
+        this.shapes.forEach((mesh, meshId) => {
+            if (meshId !== id && mesh.userData.name) {
+                existingNames.add(mesh.userData.name);
+            }
+        });
+
+        if (existingNames.has(trimmedName)) {
+            const resolvedName = this.resolveNameConflict(trimmedName);
+            if (confirm(`名称 "${trimmedName}" 已存在。是否使用 "${resolvedName}" 作为新名称？`)) {
+                mesh.userData.name = resolvedName;
+                this.updateShapesList();
+                this.showTooltip(`图形已重命名为 "${resolvedName}"`, 1500);
+            }
+        } else {
+            mesh.userData.name = trimmedName;
+            this.updateShapesList();
+            this.showTooltip(`图形已重命名为 "${trimmedName}"`, 1500);
+        }
+    }
+
+    resolveNameConflict(baseName) {
+        const existingNames = new Set();
+        this.shapes.forEach((mesh) => {
+            if (mesh.userData.name) {
+                existingNames.add(mesh.userData.name);
+            }
+        });
+
+        let counter = 1;
+        let uniqueName;
+
+        do {
+            uniqueName = `${baseName}${counter}`;
+            counter++;
+        } while (existingNames.has(uniqueName));
+
+        return uniqueName;
+    }
+
     createMaterial() {
         const colorSelect = document.getElementById('colorSelect');
         const selectedColor = colorSelect.value;
@@ -2790,10 +2889,11 @@ class Shape3DViewer {
             // 重新居中几何体
             this.recenterGeometry(newShape);
 
-            // 生成新的ID
+            // 生成新的ID和名称
             this.shapeCounter++;
             const newShapeId = `shape_${this.shapeCounter}`;
             newShape.userData.id = newShapeId;
+            newShape.userData.name = this.generateUniqueName(newShape.userData.type || 'cube');
 
             // 添加到场景和shapes映射
             this.scene.add(newShape);
@@ -2974,10 +3074,15 @@ class Shape3DViewer {
                 const lockButtonText = isLocked ? '🔒' : '🔓';
                 const lockButtonTitle = isLocked ? '解锁图形' : '锁定图形';
 
+                const displayName = mesh.userData.name || this.getChineseTypeName(mesh.userData.type);
+
                 item.innerHTML = `
                     <div style="display: flex; align-items: center; justify-content: space-between; padding: 5px; border: 1px solid #ddd; border-radius: 3px; margin-bottom: 3px; ${isLocked ? 'background: #fff3e0;' : ''}">
-                        <span style="cursor: pointer; flex: 1;">${mesh.userData.type} #${id}</span>
+                        <span style="cursor: pointer; flex: 1;" title="点击选中图形">${displayName}</span>
                         <div style="display: flex; align-items: center; gap: 3px;">
+                            <button
+                                    style="padding: 2px 4px; font-size: 10px; border: none; border-radius: 3px; cursor: pointer; background: #3742fa; color: white;"
+                                    title="重命名">✏️</button>
                             <button
                                     style="padding: 2px 4px; font-size: 10px; border: none; border-radius: 3px; cursor: pointer; ${lockButtonStyle}"
                                     title="${lockButtonTitle}">${lockButtonText}</button>
@@ -3001,10 +3106,16 @@ class Shape3DViewer {
                 });
 
                 const buttons = item.querySelectorAll('button');
-                const lockButton = buttons[0];
+                const renameButton = buttons[0];
+                const lockButton = buttons[1];
                 const colorInput = item.querySelector('input[type="color"]');
-                const rainbowButton = buttons[1];
-                const deleteButton = buttons[2];
+                const rainbowButton = buttons[2];
+                const deleteButton = buttons[3];
+
+                renameButton.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.renameShape(id);
+                });
 
                 lockButton.addEventListener('click', (e) => {
                     e.stopPropagation();
@@ -3525,6 +3636,19 @@ class Shape3DViewer {
             });
         }
 
+        // 光照系统展开/折叠按钮
+        const toggleLightingBtn = document.getElementById('toggleLighting');
+        if (toggleLightingBtn) {
+            toggleLightingBtn.addEventListener('click', () => {
+                const lightingSettings = document.getElementById('lightingSettings');
+                if (lightingSettings) {
+                    const isVisible = lightingSettings.style.display !== 'none';
+                    lightingSettings.style.display = isVisible ? 'none' : 'block';
+                    toggleLightingBtn.textContent = isVisible ? '展开' : '折叠';
+                }
+            });
+        }
+
         // 环境设置
         const backgroundColor = document.getElementById('backgroundColor');
         const backgroundColorValue = document.getElementById('backgroundColorValue');
@@ -3558,6 +3682,19 @@ class Shape3DViewer {
         if (resetEnvironmentBtn) {
             resetEnvironmentBtn.addEventListener('click', () => {
                 this.resetEnvironment();
+            });
+        }
+
+        // 环境设置展开/折叠按钮
+        const toggleEnvironmentBtn = document.getElementById('toggleEnvironment');
+        if (toggleEnvironmentBtn) {
+            toggleEnvironmentBtn.addEventListener('click', () => {
+                const environmentSettings = document.getElementById('environmentSettings');
+                if (environmentSettings) {
+                    const isVisible = environmentSettings.style.display !== 'none';
+                    environmentSettings.style.display = isVisible ? 'none' : 'block';
+                    toggleEnvironmentBtn.textContent = isVisible ? '展开' : '折叠';
+                }
             });
         }
 
@@ -4315,42 +4452,130 @@ class Shape3DViewer {
 
         // 按文件夹路径排序
         const sortedFolders = Array.from(filesByFolder.keys()).sort();
-        
-        sortedFolders.forEach(folderPath => {
-            // 如果有多个文件夹，添加文件夹标题
-            if (filesByFolder.size > 1) {
-                const folderHeader = document.createElement('div');
-                folderHeader.className = 'folder-header';
-                folderHeader.style.cssText = `
-                    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-                    padding: 8px 12px;
-                    margin: 10px 0 5px 0;
-                    border-radius: 5px;
-                    border-left: 4px solid #2196f3;
-                    font-weight: bold;
-                    color: #1565c0;
-                    font-size: 12px;
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                `;
-                
-                const folderIcon = folderPath === '根目录' ? '🏠' : '📁';
-                const displayPath = folderPath === '根目录' ? '根目录' : folderPath;
-                const fileCount = filesByFolder.get(folderPath).length;
-                
-                folderHeader.innerHTML = `${folderIcon} ${displayPath} <span style="color: #666; font-weight: normal;">(${fileCount} 个文件)</span>`;
-                configList.appendChild(folderHeader);
-            }
-            
-            // 添加该文件夹下的配置文件
+
+        sortedFolders.forEach((folderPath, folderIndex) => {
             const folderConfigs = allConfigs.filter(item => item.folderPath === folderPath);
             folderConfigs.sort((a, b) => a.filename.localeCompare(b.filename));
-            
-            folderConfigs.forEach(item => {
-                this.addConfigToList(item.filename, item.config, item.folderPath, item.uniqueKey);
-            });
+
+            // 添加文件夹标题
+            const folderHeader = document.createElement('div');
+            folderHeader.className = 'folder-header';
+            folderHeader.style.cssText = `
+                background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+                padding: 6px 10px;
+                margin: 8px 0 4px 0;
+                border-radius: 4px;
+                border-left: 3px solid #2196f3;
+                font-weight: bold;
+                color: #1565c0;
+                font-size: 11px;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            `;
+
+            const folderIcon = folderPath === '根目录' ? '🏠' : '📁';
+            const displayPath = folderPath === '根目录' ? '根目录' : folderPath;
+            const fileCount = filesByFolder.get(folderPath).length;
+
+            folderHeader.innerHTML = `${folderIcon} ${displayPath} <span style="color: #666; font-weight: normal;">(${fileCount} 个文件)</span>`;
+            configList.appendChild(folderHeader);
+
+            // 添加该文件夹下的配置文件（带分页）
+            this.displayConfigsPageWithFolder(folderConfigs, folderPath, folderIndex);
         });
+    }
+
+    displayConfigsPageWithFolder(configs, folderPath, folderIndex) {
+        const configList = document.getElementById('configList');
+        const pageKey = `folder_${folderIndex}`;
+        const currentPage = this.configListCurrentPages?.[pageKey] || 1;
+
+        const startIndex = (currentPage - 1) * this.configListPageSize;
+        const endIndex = Math.min(startIndex + this.configListPageSize, configs.length);
+        const pageConfigs = configs.slice(startIndex, endIndex);
+
+        pageConfigs.forEach(item => {
+            this.addConfigToList(item.filename, item.config, item.folderPath, item.uniqueKey);
+        });
+
+        if (configs.length > this.configListPageSize) {
+            this.addFolderPaginationControls(configs, folderPath, pageKey);
+        }
+    }
+
+    addFolderPaginationControls(configs, folderPath, pageKey) {
+        const configList = document.getElementById('configList');
+        const totalPages = Math.ceil(configs.length / this.configListPageSize);
+        const currentPage = this.configListCurrentPages?.[pageKey] || 1;
+
+        const paginationDiv = document.createElement('div');
+        paginationDiv.style.cssText = `
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+            padding: 6px;
+            margin-top: 4px;
+            border-top: 1px solid #f0f0f0;
+        `;
+
+        const prevButton = document.createElement('button');
+        prevButton.textContent = '上一页';
+        prevButton.disabled = currentPage === 1;
+        prevButton.style.cssText = `
+            padding: 3px 8px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            background: ${prevButton.disabled ? '#f5f5f5' : '#fff'};
+            color: ${prevButton.disabled ? '#ccc' : '#333'};
+            cursor: ${prevButton.disabled ? 'not-allowed' : 'pointer'};
+            font-size: 10px;
+        `;
+
+        const pageInfo = document.createElement('div');
+        pageInfo.textContent = `${currentPage} / ${totalPages}`;
+        pageInfo.style.cssText = `
+            font-size: 10px;
+            color: #666;
+            min-width: 35px;
+            text-align: center;
+        `;
+
+        const nextButton = document.createElement('button');
+        nextButton.textContent = '下一页';
+        nextButton.disabled = currentPage === totalPages;
+        nextButton.style.cssText = `
+            padding: 3px 8px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            background: ${nextButton.disabled ? '#f5f5f5' : '#fff'};
+            color: ${nextButton.disabled ? '#ccc' : '#333'};
+            cursor: ${nextButton.disabled ? 'not-allowed' : 'pointer'};
+            font-size: 10px;
+        `;
+
+        prevButton.addEventListener('click', () => {
+            if (currentPage > 1) {
+                if (!this.configListCurrentPages) this.configListCurrentPages = {};
+                this.configListCurrentPages[pageKey] = currentPage - 1;
+                this.refreshConfigListDisplay();
+            }
+        });
+
+        nextButton.addEventListener('click', () => {
+            if (currentPage < totalPages) {
+                if (!this.configListCurrentPages) this.configListCurrentPages = {};
+                this.configListCurrentPages[pageKey] = currentPage + 1;
+                this.refreshConfigListDisplay();
+            }
+        });
+
+        paginationDiv.appendChild(prevButton);
+        paginationDiv.appendChild(pageInfo);
+        paginationDiv.appendChild(nextButton);
+
+        configList.appendChild(paginationDiv);
     }
 
     addConfigToList(filename, config, folderPath = '', uniqueKey = null) {
@@ -4362,16 +4587,16 @@ class Shape3DViewer {
         listItem.style.cssText = `
             background: #f8f9fa;
             border: 1px solid #e9ecef;
-            border-radius: 5px;
-            padding: 10px;
-            margin: 5px 0;
+            border-radius: 4px;
+            padding: 6px 8px;
+            margin: 3px 0;
             display: flex;
             justify-content: space-between;
             align-items: center;
             transition: all 0.2s ease;
+            min-height: 32px;
         `;
-        
-        // 鼠标悬停效果
+
         listItem.addEventListener('mouseenter', () => {
             listItem.style.background = '#e3f2fd';
             listItem.style.borderColor = '#2196f3';
@@ -4380,41 +4605,46 @@ class Shape3DViewer {
             listItem.style.background = '#f8f9fa';
             listItem.style.borderColor = '#e9ecef';
         });
-        
-        const timestamp = config.timestamp ? new Date(config.timestamp).toLocaleString('zh-CN') : '未知时间';
+
         const shapeCount = config.shapes ? config.shapes.length : 0;
-        
-        // 使用传入的uniqueKey或构建配置键
+
         const configKey = uniqueKey || (folderPath && folderPath !== '根目录' ? `${folderPath}/${filename}` : filename);
-        
+
         const configInfo = document.createElement('div');
         configInfo.className = 'config-info';
         configInfo.style.flex = '1';
-        
-        const configName = document.createElement('div');
-        configName.className = 'config-name';
-        configName.style.cssText = `
-            font-weight: 500;
-            color: #333;
-            margin-bottom: 4px;
+        configInfo.style.cssText = `
             display: flex;
             align-items: center;
             gap: 6px;
+            overflow: hidden;
         `;
-        configName.innerHTML = `📄 ${filename}`;
-        
-        const configDetails = document.createElement('div');
-        configDetails.className = 'config-details';
-        configDetails.style.cssText = `
-            font-size: 11px;
-            color: #666;
-            line-height: 1.3;
+
+        const timestamp = config.timestamp ? new Date(config.timestamp).toLocaleString('zh-CN') : '未知时间';
+
+        const configName = document.createElement('div');
+        configName.className = 'config-name';
+        configName.style.cssText = `
+            font-size: 12px;
+            font-weight: 500;
+            color: #333;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex: 1;
         `;
-        configDetails.innerHTML = `
-            <div>📊 图形数量: ${shapeCount}</div>
-            <div>🕒 创建时间: ${timestamp}</div>
+        configName.textContent = filename;
+        configName.title = `${filename}\n图形数量: ${shapeCount}\n创建时间: ${timestamp}`;
+
+        configInfo.appendChild(configName);
+
+        const buttonsDiv = document.createElement('div');
+        buttonsDiv.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 4px;
         `;
-        
+
         const loadButton = document.createElement('button');
         loadButton.className = 'load-config-btn';
         loadButton.textContent = '加载';
@@ -4422,27 +4652,24 @@ class Shape3DViewer {
             background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
             color: white;
             border: none;
-            padding: 6px 12px;
-            border-radius: 4px;
+            padding: 4px 8px;
+            border-radius: 3px;
             cursor: pointer;
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 500;
             transition: all 0.2s ease;
-            min-width: 50px;
+            min-width: 40px;
         `;
 
         loadButton.addEventListener('mouseenter', () => {
             loadButton.style.background = 'linear-gradient(135deg, #45a049 0%, #3d8b40 100%)';
-            loadButton.style.transform = 'translateY(-1px)';
         });
         loadButton.addEventListener('mouseleave', () => {
             loadButton.style.background = 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)';
-            loadButton.style.transform = 'translateY(0)';
         });
 
         loadButton.onclick = () => this.loadConfigurationWithDialog(configKey, config);
 
-        // 添加删除按钮
         const deleteButton = document.createElement('button');
         deleteButton.className = 'delete-config-btn';
         deleteButton.textContent = '×';
@@ -4450,23 +4677,20 @@ class Shape3DViewer {
             background: linear-gradient(135deg, #ff4757 0%, #ff3838 100%);
             color: white;
             border: none;
-            padding: 6px 10px;
-            border-radius: 4px;
+            padding: 2px 6px;
+            border-radius: 3px;
             cursor: pointer;
-            font-size: 16px;
+            font-size: 14px;
             font-weight: bold;
-            transition: all 0.2s ease;
-            min-width: 30px;
-            margin-left: 5px;
+            line-height: 1;
+            min-width: 20px;
         `;
 
         deleteButton.addEventListener('mouseenter', () => {
             deleteButton.style.background = 'linear-gradient(135deg, #ff3838 0%, #d32f2f 100%)';
-            deleteButton.style.transform = 'translateY(-1px)';
         });
         deleteButton.addEventListener('mouseleave', () => {
             deleteButton.style.background = 'linear-gradient(135deg, #ff4757 0%, #ff3838 100%)';
-            deleteButton.style.transform = 'translateY(0)';
         });
 
         deleteButton.onclick = (e) => {
@@ -4474,11 +4698,11 @@ class Shape3DViewer {
             this.deleteConfigFromList(configKey, listItem);
         };
 
-        configInfo.appendChild(configName);
-        configInfo.appendChild(configDetails);
+        buttonsDiv.appendChild(loadButton);
+        buttonsDiv.appendChild(deleteButton);
+
         listItem.appendChild(configInfo);
-        listItem.appendChild(loadButton);
-        listItem.appendChild(deleteButton);
+        listItem.appendChild(buttonsDiv);
         configList.appendChild(listItem);
     }
 
@@ -4953,6 +5177,8 @@ class Shape3DViewer {
         const placeholder = document.getElementById('configListPlaceholder');
         if (!configList) return;
 
+        this.configListCurrentPage = 1;
+
         // 清空现有列表
         configList.innerHTML = '';
 
@@ -4962,28 +5188,140 @@ class Shape3DViewer {
             folderHeader.className = 'folder-header';
             folderHeader.style.cssText = `
                 background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-                padding: 8px 12px;
-                margin: 10px 0 5px 0;
-                border-radius: 5px;
-                border-left: 4px solid #2196f3;
+                padding: 6px 10px;
+                margin: 8px 0 4px 0;
+                border-radius: 4px;
+                border-left: 3px solid #2196f3;
                 font-weight: bold;
                 color: #1565c0;
-                font-size: 12px;
+                font-size: 11px;
                 display: flex;
                 align-items: center;
-                gap: 8px;
+                gap: 6px;
             `;
 
             folderHeader.innerHTML = `📁 ${folderName} <span style="color: #666; font-weight: normal;">(${configs.length} 个文件)</span>`;
             configList.appendChild(folderHeader);
         }
 
-        // 添加配置文件
-        configs.sort((a, b) => a.filename.localeCompare(b.filename)).forEach(item => {
-            this.addConfigToList(item.filename, item.config, folderName, item.filename);
-        });
+        // 添加配置文件（带分页）
+        this.displayConfigsPage(configs, folderName);
+
+        // 添加分页控制
+        if (configs.length > this.configListPageSize) {
+            this.addPaginationControls(configs, folderName);
+        }
 
         // 隐藏占位符
+        if (placeholder) {
+            placeholder.style.display = 'none';
+        }
+    }
+
+    displayConfigsPage(configs, folderName) {
+        const configList = document.getElementById('configList');
+
+        const startIndex = (this.configListCurrentPage - 1) * this.configListPageSize;
+        const endIndex = Math.min(startIndex + this.configListPageSize, configs.length);
+        const pageConfigs = configs.slice(startIndex, endIndex);
+
+        pageConfigs.sort((a, b) => a.filename.localeCompare(b.filename)).forEach(item => {
+            this.addConfigToList(item.filename, item.config, folderName, item.filename);
+        });
+    }
+
+    addPaginationControls(configs, folderName) {
+        const configList = document.getElementById('configList');
+        const totalPages = Math.ceil(configs.length / this.configListPageSize);
+
+        const paginationDiv = document.createElement('div');
+        paginationDiv.style.cssText = `
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            margin-top: 8px;
+            border-top: 1px solid #e9ecef;
+        `;
+
+        const prevButton = document.createElement('button');
+        prevButton.textContent = '上一页';
+        prevButton.disabled = this.configListCurrentPage === 1;
+        prevButton.style.cssText = `
+            padding: 4px 10px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            background: ${prevButton.disabled ? '#f5f5f5' : '#fff'};
+            color: ${prevButton.disabled ? '#ccc' : '#333'};
+            cursor: ${prevButton.disabled ? 'not-allowed' : 'pointer'};
+            font-size: 11px;
+        `;
+
+        const pageInfo = document.createElement('div');
+        pageInfo.textContent = `${this.configListCurrentPage} / ${totalPages}`;
+        pageInfo.style.cssText = `
+            font-size: 11px;
+            color: #666;
+            min-width: 40px;
+            text-align: center;
+        `;
+
+        const nextButton = document.createElement('button');
+        nextButton.textContent = '下一页';
+        nextButton.disabled = this.configListCurrentPage === totalPages;
+        nextButton.style.cssText = `
+            padding: 4px 10px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            background: ${nextButton.disabled ? '#f5f5f5' : '#fff'};
+            color: ${nextButton.disabled ? '#ccc' : '#333'};
+            cursor: ${nextButton.disabled ? 'not-allowed' : 'pointer'};
+            font-size: 11px;
+        `;
+
+        prevButton.addEventListener('click', () => {
+            if (this.configListCurrentPage > 1) {
+                this.configListCurrentPage--;
+                this.refreshConfigListPage(configs, folderName);
+            }
+        });
+
+        nextButton.addEventListener('click', () => {
+            if (this.configListCurrentPage < totalPages) {
+                this.configListCurrentPage++;
+                this.refreshConfigListPage(configs, folderName);
+            }
+        });
+
+        paginationDiv.appendChild(prevButton);
+        paginationDiv.appendChild(pageInfo);
+        paginationDiv.appendChild(nextButton);
+
+        configList.appendChild(paginationDiv);
+    }
+
+    refreshConfigListPage(configs, folderName) {
+        const configList = document.getElementById('configList');
+        const placeholder = document.getElementById('configListPlaceholder');
+        if (!configList) return;
+
+        // 保存文件夹标题
+        const folderHeader = configList.querySelector('.folder-header');
+        const oldPagination = configList.querySelector('div[style*="display: flex; justify-content: center"]');
+
+        configList.innerHTML = '';
+
+        if (folderHeader) {
+            configList.appendChild(folderHeader);
+        }
+
+        this.displayConfigsPage(configs, folderName);
+
+        if (configs.length > this.configListPageSize) {
+            this.addPaginationControls(configs, folderName);
+        }
+
         if (placeholder) {
             placeholder.style.display = 'none';
         }
