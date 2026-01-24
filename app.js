@@ -83,6 +83,19 @@ class Shape3DViewer {
         this.defaultConfigPath = './configs/'; // 默认配置文件夹路径
         this.useDefaultConfigPath = true; // 是否使用默认配置路径
 
+        // 切割预览相关
+        this.cuttingPreviewMode = false;
+        this.cuttingPreviewScene = null;
+        this.cuttingPreviewCamera = null;
+        this.cuttingPreviewRenderer = null;
+        this.cuttingPreviewMeshes = []; // 预览中的图形副本
+        this.cuttingPreviewGroup = null; // 预览内容的容器组
+        this.cuttingPreviewRotation = 0; // 预览旋转角度（弧度）
+        this.cuttingPreviewScale = 1; // 预览缩放比例
+        this.cuttingPreviewDragging = false;
+        this.cuttingPreviewStartAngle = 0;
+        this.cuttingPreviewStartRotation = 0;
+
         console.log('开始初始化...');
         this.init();
         console.log('开始设置事件监听器...');
@@ -785,15 +798,17 @@ class Shape3DViewer {
         // 创建初始切割平面
         const position = new THREE.Vector3(0, 0, 0);
         const normal = new THREE.Vector3(1, 0, 0);
-        
+
         this.activeCuttingPlane = new THREE.Plane(normal, -normal.dot(position));
-        
+
+        console.log('初始化切割平面:', this.activeCuttingPlane);
+
         // 创建切割平面可视化
         this.createCuttingPlaneVisualization();
-        
+
         // 启用切割平面TransformControls
         this.enableCuttingPlaneTransform();
-        
+
         // 应用切割预览
         this.updateCuttingPlaneFromControls();
     }
@@ -911,7 +926,9 @@ class Shape3DViewer {
     
     previewActiveCuttingPlane() {
         if (!this.activeCuttingPlane) return;
-        
+
+        console.log('previewActiveCuttingPlane: 切割平面已更新');
+
         // 临时应用切割平面到所有图形
         this.shapes.forEach(mesh => {
             if (mesh.material) {
@@ -920,7 +937,7 @@ class Shape3DViewer {
                 mesh.material.needsUpdate = true;
             }
         });
-        
+
         // 临时应用切割平面到拼合组
         this.combinedShapes.forEach(group => {
             group.traverse(child => {
@@ -931,6 +948,14 @@ class Shape3DViewer {
                 }
             });
         });
+
+        // 更新切割预览窗口
+        if (this.cuttingPreviewMode && this.cuttingPreviewScene) {
+            console.log('previewActiveCuttingPlane: 更新切割预览');
+            this.updateCuttingPreview();
+        } else {
+            console.log('previewActiveCuttingPlane: 不更新切割预览 (cuttingPreviewMode =', this.cuttingPreviewMode, ', cuttingPreviewScene =', !!this.cuttingPreviewScene + ')');
+        }
     }
     
      applyCuttingPlaneFromControls() {
@@ -3760,9 +3785,72 @@ class Shape3DViewer {
             });
         }
 
+        // 切割预览窗口事件监听器
+        const toggleCuttingPreviewBtn = document.getElementById('toggleCuttingPreview');
+        if (toggleCuttingPreviewBtn) {
+            toggleCuttingPreviewBtn.addEventListener('click', () => {
+                this.toggleCuttingPreviewMode();
+            });
+        }
+
+        const closeCuttingPreviewBtn = document.getElementById('closeCuttingPreview');
+        if (closeCuttingPreviewBtn) {
+            closeCuttingPreviewBtn.addEventListener('click', () => {
+                this.closeCuttingPreview();
+            });
+        }
+
+        const resetCuttingPreviewViewBtn = document.getElementById('resetCuttingPreviewView');
+        if (resetCuttingPreviewViewBtn) {
+            resetCuttingPreviewViewBtn.addEventListener('click', () => {
+                this.resetCuttingPreviewView();
+            });
+        }
+
         // 最小化按钮事件监听器
         this.setupMinimizeButtons();
 
+        // 切割预览窗口拖拽功能
+        this.setupDraggableWindow('cuttingPreviewWindow');
+
+    }
+
+    setupDraggableWindow(windowId) {
+        const windowElement = document.getElementById(windowId);
+        if (!windowElement) return;
+
+        const header = windowElement.querySelector('div[style*="cursor: move"], div.draggable-header');
+        if (!header) return;
+
+        let isDragging = false;
+        let offsetX, offsetY;
+
+        header.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            const rect = windowElement.getBoundingClientRect();
+            offsetX = e.clientX - rect.left;
+            offsetY = e.clientY - rect.top;
+            header.style.cursor = 'grabbing';
+            windowElement.style.transform = 'none';
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+
+            const newX = e.clientX - offsetX;
+            const newY = e.clientY - offsetY;
+
+            windowElement.style.left = newX + 'px';
+            windowElement.style.top = newY + 'px';
+            windowElement.style.right = 'auto';
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                header.style.cursor = 'move';
+            }
+        });
     }
     
     // 设置最小化按钮功能
@@ -3847,7 +3935,7 @@ class Shape3DViewer {
                 box.update();
             }
         }
-        
+
         this.renderer.render(this.scene, this.camera);
     }
     
@@ -7543,3 +7631,618 @@ document.addEventListener('keydown', (event) => {
         document.getElementById('shapeSelect').dispatchEvent(new Event('change'));
     }
 });
+
+// ==================== 切割预览功能 ====================
+
+Shape3DViewer.prototype.setupCuttingPreviewControls = function(container) {
+    let isDragging = false;
+    let startAngle = 0;
+    let startRotation = 0;
+
+    // 计算鼠标相对于容器中心的角度
+    function getMouseAngle(event, container) {
+        const rect = container.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        const dx = event.clientX - centerX;
+        const dy = event.clientY - centerY;
+        return Math.atan2(dy, dx);
+    }
+
+    // 鼠标按下
+    container.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        startAngle = getMouseAngle(e, container);
+        startRotation = this.cuttingPreviewRotation;
+    });
+
+    // 鼠标移动
+    container.addEventListener('mousemove', (e) => {
+        if (!isDragging || !this.cuttingPreviewGroup) return;
+
+        // 计算当前鼠标角度
+        const currentAngle = getMouseAngle(e, container);
+
+        // 计算角度差（考虑最小角度路径）
+        let angleDelta = currentAngle - startAngle;
+
+        // 处理角度跨越PI/-PI的情况
+        if (angleDelta > Math.PI) {
+            angleDelta -= 2 * Math.PI;
+        } else if (angleDelta < -Math.PI) {
+            angleDelta += 2 * Math.PI;
+        }
+
+        // 取反角度差，使旋转方向与鼠标移动方向一致
+        this.cuttingPreviewRotation = startRotation - angleDelta;
+
+        // 应用旋转
+        this.cuttingPreviewGroup.rotation.z = this.cuttingPreviewRotation;
+    });
+
+    // 鼠标释放
+    container.addEventListener('mouseup', () => {
+        isDragging = false;
+    });
+
+    container.addEventListener('mouseleave', () => {
+        isDragging = false;
+    });
+
+    // 滚轮缩放
+    container.addEventListener('wheel', (e) => {
+        e.preventDefault();
+
+        if (!this.cuttingPreviewGroup) return;
+
+        // 根据滚轮方向调整缩放
+        const scaleSpeed = 0.1;
+        if (e.deltaY > 0) {
+            // 向下滚动，缩小
+            this.cuttingPreviewScale = Math.max(0.1, this.cuttingPreviewScale - scaleSpeed);
+        } else {
+            // 向上滚动，放大
+            this.cuttingPreviewScale = Math.min(10, this.cuttingPreviewScale + scaleSpeed);
+        }
+
+        // 应用缩放
+        this.cuttingPreviewGroup.scale.set(this.cuttingPreviewScale, this.cuttingPreviewScale, 1);
+    }, { passive: false });
+};
+
+Shape3DViewer.prototype.resetCuttingPreviewView = function() {
+    if (!this.cuttingPreviewGroup) return;
+
+    // 重置旋转和缩放
+    this.cuttingPreviewRotation = 0;
+    this.cuttingPreviewScale = 1;
+    this.cuttingPreviewGroup.rotation.z = 0;
+    this.cuttingPreviewGroup.scale.set(1, 1, 1);
+
+    this.showTooltip('已重置预览视图', 1500);
+};
+
+Shape3DViewer.prototype.toggleCuttingPreviewMode = function() {
+    this.cuttingPreviewMode = !this.cuttingPreviewMode;
+    const window = document.getElementById('cuttingPreviewWindow');
+    const btn = document.getElementById('toggleCuttingPreview');
+
+    if (this.cuttingPreviewMode) {
+        window.style.display = 'block';
+        btn.classList.add('mode-active');
+        this.initCuttingPreviewWindow();
+        this.updateCuttingPreview();
+        this.showTooltip('切割预览窗口已打开', 1500);
+    } else {
+        window.style.display = 'none';
+        btn.classList.remove('mode-active');
+    }
+};
+
+Shape3DViewer.prototype.closeCuttingPreview = function() {
+    const window = document.getElementById('cuttingPreviewWindow');
+    window.style.display = 'none';
+    this.cuttingPreviewMode = false;
+    document.getElementById('toggleCuttingPreview').classList.remove('mode-active');
+};
+
+Shape3DViewer.prototype.initCuttingPreviewWindow = function() {
+    const canvasContainer = document.getElementById('cuttingPreviewCanvas');
+
+    if (!this.cuttingPreviewScene) {
+        this.cuttingPreviewScene = new THREE.Scene();
+        this.cuttingPreviewScene.background = new THREE.Color(0xffffff);
+
+        // 创建容器组用于旋转和缩放
+        this.cuttingPreviewGroup = new THREE.Group();
+        this.cuttingPreviewScene.add(this.cuttingPreviewGroup);
+
+        // 使用正交相机实现2D截面视图
+        const frustumSize = 20;
+        const aspect = 400 / 360;
+        this.cuttingPreviewCamera = new THREE.OrthographicCamera(
+            frustumSize * aspect / -2,
+            frustumSize * aspect / 2,
+            frustumSize / 2,
+            frustumSize / -2,
+            0.1,
+            1000
+        );
+        this.cuttingPreviewCamera.position.set(0, 0, 20);
+        this.cuttingPreviewCamera.lookAt(0, 0, 0);
+
+        this.cuttingPreviewRenderer = new THREE.WebGLRenderer({ antialias: true });
+        this.cuttingPreviewRenderer.setSize(400, 360);
+        canvasContainer.appendChild(this.cuttingPreviewRenderer.domElement);
+
+        // 添加2D坐标轴
+        const axesHelper = new THREE.AxesHelper(10);
+        this.cuttingPreviewScene.add(axesHelper);
+
+        // 添加网格背景
+        const gridHelper = new THREE.GridHelper(20, 20, 0xcccccc, 0xeeeeee);
+        gridHelper.rotation.x = Math.PI / 2;
+        this.cuttingPreviewScene.add(gridHelper);
+
+        // 添加标题文本
+        const titleText = document.createElement('div');
+        titleText.id = 'cuttingPreviewTitle';
+        titleText.style.position = 'absolute';
+        titleText.style.top = '10px';
+        titleText.style.left = '10px';
+        titleText.style.background = 'rgba(0,0,0,0.7)';
+        titleText.style.color = 'white';
+        titleText.style.padding = '5px 10px';
+        titleText.style.borderRadius = '3px';
+        titleText.style.fontSize = '12px';
+        titleText.style.fontWeight = 'bold';
+        titleText.style.zIndex = '10';
+        titleText.textContent = '2D截面预览';
+        canvasContainer.appendChild(titleText);
+
+        // 添加控制提示
+        const hintText = document.createElement('div');
+        hintText.id = 'cuttingPreviewHint';
+        hintText.style.position = 'absolute';
+        hintText.style.bottom = '10px';
+        hintText.style.left = '10px';
+        hintText.style.background = 'rgba(0,0,0,0.5)';
+        hintText.style.color = 'white';
+        hintText.style.padding = '3px 8px';
+        hintText.style.borderRadius = '3px';
+        hintText.style.fontSize = '10px';
+        hintText.style.zIndex = '10';
+        hintText.textContent = '拖拽旋转 | 滚轮缩放';
+        canvasContainer.appendChild(hintText);
+
+        // 添加鼠标事件
+        this.setupCuttingPreviewControls(canvasContainer);
+    }
+
+    // 立即更新预览
+    this.updateCuttingPreview();
+    this.renderCuttingPreview();
+};
+
+Shape3DViewer.prototype.updateCuttingPreview = function() {
+    if (!this.cuttingPreviewScene || !this.cuttingPreviewRenderer) {
+        console.log('更新切割预览: 场景或渲染器未初始化');
+        return;
+    }
+
+    const width = 400;
+    const height = 360;
+
+    console.log('更新切割预览: shapes数量 =', this.shapes.size);
+
+    // 清除预览组中的所有子对象
+    if (this.cuttingPreviewGroup) {
+        // 从后往前删除，避免索引问题
+        for (let i = this.cuttingPreviewGroup.children.length - 1; i >= 0; i--) {
+            const child = this.cuttingPreviewGroup.children[i];
+            this.cuttingPreviewGroup.remove(child);
+            if (child.geometry) child.geometry.dispose();
+            if (child.material) child.material.dispose();
+        }
+    }
+
+    // 清除现有的预览内容记录
+    this.cuttingPreviewMeshes.forEach(mesh => {
+        if (mesh.geometry) mesh.geometry.dispose();
+        if (mesh.material) mesh.material.dispose();
+    });
+    this.cuttingPreviewMeshes = [];
+
+    // 如果没有激活的切割平面，显示提示文本
+    if (!this.activeCuttingPlane) {
+        console.log('更新切割预览: 没有激活的切割平面');
+        return;
+    }
+
+    console.log('更新切割预览: 切割平面存在', this.activeCuttingPlane);
+
+    // 重置容器的变换
+    if (this.cuttingPreviewGroup) {
+        this.cuttingPreviewGroup.rotation.set(0, 0, this.cuttingPreviewRotation);
+        this.cuttingPreviewGroup.scale.set(this.cuttingPreviewScale, this.cuttingPreviewScale, 1);
+    }
+
+    // 计算所有图形的截面
+    const allContours = [];
+    let hasValidContour = false;
+
+    this.shapes.forEach((mesh, index) => {
+        if (!mesh.geometry) {
+            console.log('Mesh', index, '没有几何体');
+            return;
+        }
+
+        mesh.updateMatrixWorld();
+
+        const geometry = mesh.geometry.clone();
+        geometry.applyMatrix4(mesh.matrixWorld);
+
+        // 计算截面线段
+        const lineSegments = this.computeCrossSectionSegments(geometry, this.activeCuttingPlane);
+        console.log('Mesh', index, '截面线段数:', lineSegments.length);
+
+        // 将线段连接成轮廓
+        const contours = this.connectLineSegmentsToContours(lineSegments);
+        console.log('Mesh', index, '轮廓数:', contours.length);
+
+        if (contours && contours.length > 0) {
+            allContours.push({ contours, color: mesh.material.color });
+            hasValidContour = true;
+        }
+    });
+
+    console.log('总共轮廓数:', allContours.length);
+
+    // 如果没有有效轮廓，清除后返回
+    if (!hasValidContour) {
+        console.log('没有有效的截面轮廓');
+        return;
+    }
+
+    // 将3D截面投影到2D平面并绘制
+    const planeBasis = this.getPlaneBasis(this.activeCuttingPlane);
+
+    // 收集所有2D点用于计算边界框
+    let allPoints2d = [];
+    const allShapes2d = [];
+
+    allContours.forEach(shape => {
+        shape.contours.forEach(contour => {
+            if (contour.length < 3) return;
+
+            // 投影3D点到2D
+            const points2d = contour.map(p => {
+                const planePoint = this.activeCuttingPlane.normal.clone().multiplyScalar(-this.activeCuttingPlane.constant);
+                const local = p.clone().sub(planePoint);
+                return {
+                    x: local.dot(planeBasis.u),
+                    y: local.dot(planeBasis.v)
+                };
+            });
+
+            allPoints2d = allPoints2d.concat(points2d);
+            allShapes2d.push({ points: points2d, color: shape.color });
+        });
+    });
+
+    // 计算边界框
+    let minX = Infinity, maxX = -Infinity;
+    let minY = Infinity, maxY = -Infinity;
+
+    allPoints2d.forEach(p => {
+        minX = Math.min(minX, p.x);
+        maxX = Math.max(maxX, p.x);
+        minY = Math.min(minY, p.y);
+        maxY = Math.max(maxY, p.y);
+    });
+
+    console.log('边界框: minX =', minX, ', maxX =', maxX, ', minY =', minY, ', maxY =', maxY);
+
+    // 计算中心点
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+
+    console.log('中心点: (', centerX, ',', centerY, ')');
+
+    // 调整相机以适应图形大小
+    const boundsWidth = maxX - minX;
+    const boundsHeight = maxY - minY;
+    const maxSize = Math.max(boundsWidth, boundsHeight);
+
+    if (maxSize > 0 && maxSize !== Infinity) {
+        // 设置相机视口大小，让图形占据约80%的视图
+        const frustumSize = maxSize * 1.25;
+        const aspect = 400 / 360;
+        this.cuttingPreviewCamera.left = frustumSize * aspect / -2;
+        this.cuttingPreviewCamera.right = frustumSize * aspect / 2;
+        this.cuttingPreviewCamera.top = frustumSize / 2;
+        this.cuttingPreviewCamera.bottom = frustumSize / -2;
+        this.cuttingPreviewCamera.updateProjectionMatrix();
+        console.log('相机视口大小调整为:', frustumSize);
+    }
+
+    // 将所有图形居中
+    allShapes2d.forEach(shapeData => {
+        const points = shapeData.points;
+
+        // 创建截面轮廓形状
+        const shape2d = new THREE.Shape();
+
+        // 将点平移到中心
+        const centeredPoints = points.map(p => ({
+            x: p.x - centerX,
+            y: p.y - centerY
+        }));
+
+        shape2d.moveTo(centeredPoints[0].x, centeredPoints[0].y);
+        for (let i = 1; i < centeredPoints.length; i++) {
+            shape2d.lineTo(centeredPoints[i].x, centeredPoints[i].y);
+        }
+        shape2d.closePath();
+
+        const geometry = new THREE.ShapeGeometry(shape2d);
+        const material = new THREE.MeshBasicMaterial({
+            color: shapeData.color,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.7
+        });
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.position.z = 0;
+        this.cuttingPreviewGroup.add(mesh);
+        this.cuttingPreviewMeshes.push(mesh);
+
+        // 添加边框线 - 使用轮廓线而不是EdgesGeometry
+        const lineGeometry = new THREE.BufferGeometry();
+        const linePositions = [];
+
+        // 将轮廓点转换为线段（首尾相连）
+        for (let i = 0; i < centeredPoints.length; i++) {
+            const p1 = centeredPoints[i];
+            const p2 = centeredPoints[(i + 1) % centeredPoints.length];
+            linePositions.push(p1.x, p1.y, 0.01);
+            linePositions.push(p2.x, p2.y, 0.01);
+        }
+
+        lineGeometry.setAttribute('position', new THREE.Float32BufferAttribute(linePositions, 3));
+        const lineMaterial = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 });
+        const borderLines = new THREE.LineSegments(lineGeometry, lineMaterial);
+        this.cuttingPreviewGroup.add(borderLines);
+        this.cuttingPreviewMeshes.push(borderLines);
+    });
+
+    console.log('渲染的网格数:', this.cuttingPreviewMeshes.length);
+};
+
+Shape3DViewer.prototype.computeCrossSectionSegments = function(geometry, plane) {
+    const segments = [];
+    const positions = geometry.attributes.position.array;
+    const epsilon = 0.001;
+
+    console.log('computeCrossSectionSegments: 顶点数 =', positions.length / 3);
+
+    // 遍历三角形面
+    let triangleCount = 0;
+    for (let i = 0; i < positions.length; i += 9) {
+        triangleCount++;
+
+        const v1 = new THREE.Vector3(positions[i], positions[i + 1], positions[i + 2]);
+        const v2 = new THREE.Vector3(positions[i + 3], positions[i + 4], positions[i + 5]);
+        const v3 = new THREE.Vector3(positions[i + 6], positions[i + 7], positions[i + 8]);
+
+        const d1 = plane.distanceToPoint(v1);
+        const d2 = plane.distanceToPoint(v2);
+        const d3 = plane.distanceToPoint(v3);
+
+        // 判断顶点在平面的哪一侧
+        const s1 = Math.sign(d1);
+        const s2 = Math.sign(d2);
+        const s3 = Math.sign(d3);
+
+        // 处理顶点在平面上的情况
+        const onPlane1 = Math.abs(d1) < epsilon;
+        const onPlane2 = Math.abs(d2) < epsilon;
+        const onPlane3 = Math.abs(d3) < epsilon;
+
+        const intersections = [];
+
+        // 如果顶点在平面上，添加到交点列表
+        if (onPlane1) intersections.push(v1.clone());
+        if (onPlane2) intersections.push(v2.clone());
+        if (onPlane3) intersections.push(v3.clone());
+
+        // 计算边与平面的交点
+        if (s1 !== s2 && !onPlane1 && !onPlane2) {
+            const t = d1 / (d1 - d2);
+            intersections.push(v1.clone().lerp(v2, t));
+        }
+        if (s2 !== s3 && !onPlane2 && !onPlane3) {
+            const t = d2 / (d2 - d3);
+            intersections.push(v2.clone().lerp(v3, t));
+        }
+        if (s3 !== s1 && !onPlane3 && !onPlane1) {
+            const t = d3 / (d3 - d1);
+            intersections.push(v3.clone().lerp(v1, t));
+        }
+
+        // 去重：合并非常接近的点
+        const uniqueIntersections = [];
+        for (const p of intersections) {
+            let isDuplicate = false;
+            for (const existing of uniqueIntersections) {
+                if (p.distanceTo(existing) < epsilon) {
+                    isDuplicate = true;
+                    break;
+                }
+            }
+            if (!isDuplicate) {
+                uniqueIntersections.push(p);
+            }
+        }
+
+        // 如果有两个交点，形成一个线段
+        if (uniqueIntersections.length === 2) {
+            segments.push({ p1: uniqueIntersections[0], p2: uniqueIntersections[1] });
+        }
+    }
+
+    console.log('computeCrossSectionSegments: 三角形数 =', triangleCount, ', 线段数 =', segments.length);
+
+    return segments;
+};
+
+Shape3DViewer.prototype.connectLineSegmentsToContours = function(segments) {
+    if (segments.length === 0) return [];
+
+    const epsilon = 0.001;
+    const contours = [];
+    const usedSegments = new Set();
+
+    console.log('connectLineSegmentsToContours: 输入线段数 =', segments.length);
+
+    // 为每个端点创建一个邻接表
+    const adjacency = new Map();
+
+    function getPointKey(point) {
+        return `${point.x.toFixed(6)},${point.y.toFixed(6)},${point.z.toFixed(6)}`;
+    }
+
+    function findOrMergePoint(point, points) {
+        const key = getPointKey(point);
+        if (points.has(key)) {
+            return points.get(key);
+        }
+        const newPoint = point.clone();
+        points.set(key, newPoint);
+        return newPoint;
+    }
+
+    // 合并重复的端点并构建邻接表
+    const uniquePoints = new Map();
+    segments.forEach((seg, index) => {
+        const p1 = findOrMergePoint(seg.p1, uniquePoints);
+        const p2 = findOrMergePoint(seg.p2, uniquePoints);
+
+        const key1 = getPointKey(p1);
+        const key2 = getPointKey(p2);
+
+        if (!adjacency.has(key1)) adjacency.set(key1, []);
+        if (!adjacency.has(key2)) adjacency.set(key2, []);
+
+        adjacency.get(key1).push({ point: p2, segmentIndex: index, end: 'p2' });
+        adjacency.get(key2).push({ point: p1, segmentIndex: index, end: 'p1' });
+    });
+
+    console.log('connectLineSegmentsToContours: 邻接表节点数 =', adjacency.size);
+
+    // 从未使用的线段开始，构建轮廓
+    for (let i = 0; i < segments.length; i++) {
+        if (usedSegments.has(i)) continue;
+
+        const startSeg = segments[i];
+        const startKey = getPointKey(findOrMergePoint(startSeg.p1, uniquePoints));
+
+        const contour = [];
+        let currentKey = startKey;
+        let prevSegIndex = i;
+        let visitedPoints = new Set();
+        visitedPoints.add(startKey);
+
+        // 添加第一个线段的两个端点
+        const p1 = findOrMergePoint(startSeg.p1, uniquePoints);
+        const p2 = findOrMergePoint(startSeg.p2, uniquePoints);
+        contour.push(p1);
+        contour.push(p2);
+        usedSegments.add(i);
+        visitedPoints.add(getPointKey(p2));
+        currentKey = getPointKey(p2);
+
+        // 沿着相邻线段追踪
+        while (true) {
+            const neighbors = adjacency.get(currentKey);
+            if (!neighbors || neighbors.length === 0) break;
+
+            // 查找下一个未使用的线段
+            let found = false;
+            for (const neighbor of neighbors) {
+                if (!usedSegments.has(neighbor.segmentIndex)) {
+                    const nextKey = getPointKey(neighbor.point);
+
+                    // 避免重复访问同一点
+                    if (visitedPoints.has(nextKey) && nextKey !== startKey) {
+                        continue;
+                    }
+
+                    contour.push(neighbor.point);
+                    usedSegments.add(neighbor.segmentIndex);
+                    visitedPoints.add(nextKey);
+                    prevSegIndex = neighbor.segmentIndex;
+                    currentKey = nextKey;
+
+                    // 检查是否回到了起点
+                    if (currentKey === startKey) {
+                        found = 'closed';
+                        break;
+                    }
+                    found = true;
+                    break;
+                }
+            }
+
+            if (found === 'closed') {
+                break;
+            }
+            if (!found) {
+                break;
+            }
+        }
+
+        // 检查轮廓是否有效
+        if (contour.length >= 3) {
+            const firstKey = getPointKey(contour[0]);
+            const lastKey = getPointKey(contour[contour.length - 1]);
+
+            if (firstKey === lastKey) {
+                contour.pop();
+            }
+
+            if (contour.length >= 3) {
+                contours.push(contour);
+                console.log('connectLineSegmentsToContours: 创建轮廓，顶点数 =', contour.length);
+            }
+        }
+    }
+
+    console.log('connectLineSegmentsToContours: 输出轮廓数 =', contours.length);
+
+    return contours;
+};
+
+Shape3DViewer.prototype.getPlaneBasis = function(plane) {
+    const normal = plane.normal.clone();
+    const u = new THREE.Vector3();
+    const v = new THREE.Vector3();
+
+    if (Math.abs(normal.x) > 0.9) {
+        u.set(0, 1, 0);
+    } else {
+        u.set(1, 0, 0);
+    }
+
+    v.crossVectors(normal, u).normalize();
+    u.crossVectors(v, normal).normalize();
+
+    return { u, v };
+};
+
+Shape3DViewer.prototype.renderCuttingPreview = function() {
+    if (this.cuttingPreviewMode && this.cuttingPreviewRenderer) {
+        this.cuttingPreviewRenderer.render(this.cuttingPreviewScene, this.cuttingPreviewCamera);
+        requestAnimationFrame(() => this.renderCuttingPreview());
+    }
+};

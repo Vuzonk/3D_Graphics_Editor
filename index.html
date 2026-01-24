@@ -941,7 +941,12 @@
                 <label>切割平面列表:</label>
                 <div id="cuttingPlanesList" style="max-height: 80px; overflow-y: auto; border: 1px solid #ddd; border-radius: 5px; padding: 5px;"></div>
             </div>
-            
+
+            <div class="section-title">✂️ 切割预览</div>
+            <div class="control-group">
+                <button id="toggleCuttingPreview">切割预览窗口</button>
+            </div>
+
             <div class="control-group">
                 <div id="shapeInfo" style="background: #f8f9fa; padding: 8px; border-radius: 5px; font-size: 12px; color: #666;">
                     点击图形进行选择
@@ -1335,7 +1340,19 @@
     }
     </script>
 
-    <!-- 加载所有库模块（会自动加载app.js） -->
-    <script type="module" src="load-modules.js"></script>
-</body>
+        <!-- 切割预览窗口 -->
+        <div id="cuttingPreviewWindow" style="display: none; position: fixed; top: 100px; right: 20px; width: 400px; height: 400px; background: rgba(255, 255, 255, 0.95); border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); z-index: 1000; overflow: hidden;">
+            <div style="background: linear-gradient(45deg, #dc3545, #c82333); color: white; padding: 10px; display: flex; justify-content: space-between; align-items: center; cursor: move;">
+                <span style="font-weight: bold; font-size: 14px;">✂️ 切割预览</span>
+                <div style="display: flex; gap: 5px;">
+                    <button id="resetCuttingPreviewView" style="background: rgba(255,255,255,0.2); border: none; color: white; border-radius: 3px; padding: 2px 8px; font-size: 12px; cursor: pointer;">重置视图</button>
+                    <button id="closeCuttingPreview" style="background: rgba(255,255,255,0.2); border: none; color: white; border-radius: 50%; width: 25px; height: 25px; font-size: 16px; cursor: pointer;">&times;</button>
+                </div>
+            </div>
+            <div id="cuttingPreviewCanvas" style="width: 100%; height: calc(100% - 40px); background: #f0f0f0;"></div>
+        </div>
+
+        <!-- 加载所有库模块（会自动加载app.js） -->
+        <script type="module" src="load-modules.js"></script>
+    </body>
 </html>
