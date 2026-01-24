@@ -421,7 +421,7 @@ class Shape3DViewer {
             const result = this.csgEvaluator.evaluate(brush1, brush2, operation);
 
             if (result) {
-                console.log('CSG运算成功完成，耗时:', this.csgEvaluator.lastTime || '未知');
+                // console.log('CSG运算成功完成，耗时:', this.csgEvaluator.lastTime || '未知');
             }
 
             return result;
@@ -657,11 +657,6 @@ class Shape3DViewer {
             this.controls.enabled = !event.value;
         });
         
-        // 对象变化时更新切割平面
-        this.cuttingPlaneTransform.addEventListener('objectChange', () => {
-            this.updateCuttingPlaneFromTransform();
-        });
-        
         this.scene.add(this.cuttingPlaneTransform);
     }
     
@@ -671,10 +666,15 @@ class Shape3DViewer {
         // 从代理对象的旋转计算新的法向量
         const defaultNormal = new THREE.Vector3(1, 0, 0);
         const newNormal = defaultNormal.clone().applyQuaternion(this.cuttingPlaneProxy.quaternion);
+        newNormal.normalize();
         
         // 更新切割平面的法向量
         if (this.activeCuttingPlane) {
             this.activeCuttingPlane.normal.copy(newNormal);
+            
+            // 更新切割平面的常量（保持平面位置不变）
+            const currentPoint = this.cuttingPlaneProxy.position;
+            this.activeCuttingPlane.constant = -newNormal.dot(currentPoint);
             
             // 更新控制器的值
             document.getElementById('cuttingNormalX').value = newNormal.x.toFixed(2);
@@ -720,10 +720,12 @@ class Shape3DViewer {
         if (this.activeCuttingPlane) {
             const point = this.activeCuttingPlane.normal.clone().multiplyScalar(-this.activeCuttingPlane.constant);
             this.cuttingPlaneProxy.position.copy(point);
+            
+            // 设置代理对象旋转与切割平面法向量对齐
+            const quaternion = new THREE.Quaternion();
+            quaternion.setFromUnitVectors(new THREE.Vector3(1, 0, 0), this.activeCuttingPlane.normal);
+            this.cuttingPlaneProxy.setRotationFromQuaternion(quaternion);
         }
-        
-        // 重置代理对象旋转
-        this.cuttingPlaneProxy.rotation.set(0, 0, 0);
     }
     
     disableCuttingPlaneTransform() {
@@ -740,19 +742,25 @@ class Shape3DViewer {
     setCuttingPlaneTransformMode(mode) {
         if (!this.cuttingPlaneTransform) return;
         
+        // 移除旧的监听器
+        this.cuttingPlaneTransform.removeEventListener('objectChange', this.updateCuttingPlanePositionFromTransformHandler);
+        this.cuttingPlaneTransform.removeEventListener('objectChange', this.updateCuttingPlaneFromTransformHandler);
+        
         this.cuttingPlaneTransform.setMode(mode);
         
         // 根据模式设置不同的行为
         if (mode === 'translate') {
             // 移动模式：更新切割平面位置
-            this.cuttingPlaneTransform.addEventListener('objectChange', () => {
-                this.updateCuttingPlanePositionFromTransform();
-            });
+            if (!this.updateCuttingPlanePositionFromTransformHandler) {
+                this.updateCuttingPlanePositionFromTransformHandler = () => this.updateCuttingPlanePositionFromTransform();
+            }
+            this.cuttingPlaneTransform.addEventListener('objectChange', this.updateCuttingPlanePositionFromTransformHandler);
         } else if (mode === 'rotate') {
             // 旋转模式：更新切割平面法向量
-            this.cuttingPlaneTransform.addEventListener('objectChange', () => {
-                this.updateCuttingPlaneFromTransform();
-            });
+            if (!this.updateCuttingPlaneFromTransformHandler) {
+                this.updateCuttingPlaneFromTransformHandler = () => this.updateCuttingPlaneFromTransform();
+            }
+            this.cuttingPlaneTransform.addEventListener('objectChange', this.updateCuttingPlaneFromTransformHandler);
         }
     }
     
@@ -801,7 +809,7 @@ class Shape3DViewer {
 
         this.activeCuttingPlane = new THREE.Plane(normal, -normal.dot(position));
 
-        console.log('初始化切割平面:', this.activeCuttingPlane);
+        // console.log('初始化切割平面:', this.activeCuttingPlane);
 
         // 创建切割平面可视化
         this.createCuttingPlaneVisualization();
@@ -927,8 +935,6 @@ class Shape3DViewer {
     previewActiveCuttingPlane() {
         if (!this.activeCuttingPlane) return;
 
-        console.log('previewActiveCuttingPlane: 切割平面已更新');
-
         // 临时应用切割平面到所有图形
         this.shapes.forEach(mesh => {
             if (mesh.material) {
@@ -951,10 +957,8 @@ class Shape3DViewer {
 
         // 更新切割预览窗口
         if (this.cuttingPreviewMode && this.cuttingPreviewScene) {
-            console.log('previewActiveCuttingPlane: 更新切割预览');
             this.updateCuttingPreview();
-        } else {
-            console.log('previewActiveCuttingPlane: 不更新切割预览 (cuttingPreviewMode =', this.cuttingPreviewMode, ', cuttingPreviewScene =', !!this.cuttingPreviewScene + ')');
+        }
         }
     }
     
@@ -2502,7 +2506,7 @@ class Shape3DViewer {
     }
     
     createShape(shapeType, position = null) {
-        console.log('createShape被调用，类型:', shapeType);
+        // console.log('createShape被调用，类型:', shapeType);
         let geometry;
         let shapeHeight = 2; // 默认高度
         
@@ -3144,9 +3148,9 @@ class Shape3DViewer {
         
         // 添加图形
         document.getElementById('addShape').addEventListener('click', () => {
-            console.log('添加图形按钮被点击');
+            // console.log('添加图形按钮被点击');
             const shapeType = document.getElementById('shapeSelect').value;
-            console.log('选择的图形类型:', shapeType);
+            // console.log('选择的图形类型:', shapeType);
             this.addShape(shapeType);
         });
         
@@ -3953,7 +3957,7 @@ class Shape3DViewer {
             // 如果FPS低于30，增加低FPS计数
             if (this.currentFPS < 30) {
                 this.lowFPSCount++;
-                console.log(`低FPS检测: ${this.currentFPS}fps, 连续次数: ${this.lowFPSCount}`);
+                // console.log(`低FPS检测: ${this.currentFPS}fps, 连续次数: ${this.lowFPSCount}`);
                 
                 // 连续3次低FPS，自动降低渲染质量
                 if (this.lowFPSCount >= 3) {
@@ -3968,19 +3972,19 @@ class Shape3DViewer {
     
     // 自适应渲染质量调整
     adaptRenderingQuality() {
-        console.log('检测到性能问题，自动降低渲染质量');
-        
+        // console.log('检测到性能问题，自动降低渲染质量');
+
         // 降低像素比
         const currentPixelRatio = this.renderer.getPixelRatio();
         if (currentPixelRatio > 1) {
             this.renderer.setPixelRatio(Math.max(1, currentPixelRatio * 0.8));
-            console.log(`像素比降低至: ${this.renderer.getPixelRatio()}`);
+            // console.log(`像素比降低至: ${this.renderer.getPixelRatio()}`);
         }
-        
+
         // 禁用阴影（如果还未禁用）
         if (this.renderer.shadowMap.enabled) {
             this.renderer.shadowMap.enabled = false;
-            console.log('已禁用阴影以提高性能');
+            // console.log('已禁用阴影以提高性能');
         }
         
         // 简化材质
@@ -6478,18 +6482,18 @@ class Shape3DViewer {
                     const duration = (endTime - startTime).toFixed(2);
 
                     // 调试日志
-                    console.log('布尔运算 - resultBrush信息:', {
-                        position: resultBrush.position,
-                        rotation: resultBrush.rotation,
-                        scale: resultBrush.scale,
-                        matrixWorld: resultBrush.matrixWorld
-                    });
-                    console.log('布尔运算 - mainShape信息:', {
-                        position: mainShape.position,
-                        rotation: mainShape.rotation,
-                        scale: mainShape.scale,
-                        matrixWorld: mainShape.matrixWorld
-                    });
+                    // console.log('布尔运算 - resultBrush信息:', {
+                    //     position: resultBrush.position,
+                    //     rotation: resultBrush.rotation,
+                    //     scale: resultBrush.scale,
+                    //     matrixWorld: resultBrush.matrixWorld
+                    // });
+                    // console.log('布尔运算 - mainShape信息:', {
+                    //     position: mainShape.position,
+                    //     rotation: mainShape.rotation,
+                    //     scale: mainShape.scale,
+                    //     matrixWorld: mainShape.matrixWorld
+                    // });
 
                     // 克隆几何体和材质
                     const resultGeometry = resultBrush.geometry.clone();
@@ -6518,12 +6522,12 @@ class Shape3DViewer {
                     this.recenterGeometry(resultMesh);
 
                     // 添加更多调试日志
-                    console.log('布尔运算 - resultMesh创建后信息:', {
-                        position: resultMesh.position,
-                        rotation: resultMesh.rotation,
-                        scale: resultMesh.scale,
-                        matrixWorld: resultMesh.matrixWorld
-                    });
+                    // console.log('布尔运算 - resultMesh创建后信息:', {
+                    //     position: resultMesh.position,
+                    //     rotation: resultMesh.rotation,
+                    //     scale: resultMesh.scale,
+                    //     matrixWorld: resultMesh.matrixWorld
+                    // });
 
                     // 设置用户数据
                     resultMesh.userData = {
@@ -6560,7 +6564,7 @@ class Shape3DViewer {
 
                     this.showTooltip(`布尔${operationNames[operation]}运算完成 (耗时${duration}ms)`, 2500);
 
-                    console.log(`布尔运算完成 - 类型: ${operation}, 耗时: ${duration}ms`);
+                    // console.log(`布尔运算完成 - 类型: ${operation}, 耗时: ${duration}ms`);
                 } else {
                     this.showTooltip('布尔运算失败，请检查图形是否相交或封闭', 2500);
                 }
@@ -7826,14 +7830,14 @@ Shape3DViewer.prototype.initCuttingPreviewWindow = function() {
 
 Shape3DViewer.prototype.updateCuttingPreview = function() {
     if (!this.cuttingPreviewScene || !this.cuttingPreviewRenderer) {
-        console.log('更新切割预览: 场景或渲染器未初始化');
+        // console.log('更新切割预览: 场景或渲染器未初始化');
         return;
     }
 
     const width = 400;
     const height = 360;
 
-    console.log('更新切割预览: shapes数量 =', this.shapes.size);
+    // console.log('更新切割预览: shapes数量 =', this.shapes.size);
 
     // 清除预览组中的所有子对象
     if (this.cuttingPreviewGroup) {
@@ -7855,11 +7859,11 @@ Shape3DViewer.prototype.updateCuttingPreview = function() {
 
     // 如果没有激活的切割平面，显示提示文本
     if (!this.activeCuttingPlane) {
-        console.log('更新切割预览: 没有激活的切割平面');
+        // console.log('更新切割预览: 没有激活的切割平面');
         return;
     }
 
-    console.log('更新切割预览: 切割平面存在', this.activeCuttingPlane);
+    // console.log('更新切割预览: 切割平面存在', this.activeCuttingPlane);
 
     // 重置容器的变换
     if (this.cuttingPreviewGroup) {
@@ -7873,7 +7877,7 @@ Shape3DViewer.prototype.updateCuttingPreview = function() {
 
     this.shapes.forEach((mesh, index) => {
         if (!mesh.geometry) {
-            console.log('Mesh', index, '没有几何体');
+            // console.log('Mesh', index, '没有几何体');
             return;
         }
 
@@ -7884,11 +7888,11 @@ Shape3DViewer.prototype.updateCuttingPreview = function() {
 
         // 计算截面线段
         const lineSegments = this.computeCrossSectionSegments(geometry, this.activeCuttingPlane);
-        console.log('Mesh', index, '截面线段数:', lineSegments.length);
+        // console.log('Mesh', index, '截面线段数:', lineSegments.length);
 
         // 将线段连接成轮廓
         const contours = this.connectLineSegmentsToContours(lineSegments);
-        console.log('Mesh', index, '轮廓数:', contours.length);
+        // console.log('Mesh', index, '轮廓数:', contours.length);
 
         if (contours && contours.length > 0) {
             allContours.push({ contours, color: mesh.material.color });
@@ -7896,11 +7900,11 @@ Shape3DViewer.prototype.updateCuttingPreview = function() {
         }
     });
 
-    console.log('总共轮廓数:', allContours.length);
+    // console.log('总共轮廓数:', allContours.length);
 
     // 如果没有有效轮廓，清除后返回
     if (!hasValidContour) {
-        console.log('没有有效的截面轮廓');
+        // console.log('没有有效的截面轮廓');
         return;
     }
 
@@ -7941,13 +7945,13 @@ Shape3DViewer.prototype.updateCuttingPreview = function() {
         maxY = Math.max(maxY, p.y);
     });
 
-    console.log('边界框: minX =', minX, ', maxX =', maxX, ', minY =', minY, ', maxY =', maxY);
+    // console.log('边界框: minX =', minX, ', maxX =', maxX, ', minY =', minY, ', maxY =', maxY);
 
     // 计算中心点
     const centerX = (minX + maxX) / 2;
     const centerY = (minY + maxY) / 2;
 
-    console.log('中心点: (', centerX, ',', centerY, ')');
+    // console.log('中心点: (', centerX, ',', centerY, ')');
 
     // 调整相机以适应图形大小
     const boundsWidth = maxX - minX;
@@ -7963,7 +7967,7 @@ Shape3DViewer.prototype.updateCuttingPreview = function() {
         this.cuttingPreviewCamera.top = frustumSize / 2;
         this.cuttingPreviewCamera.bottom = frustumSize / -2;
         this.cuttingPreviewCamera.updateProjectionMatrix();
-        console.log('相机视口大小调整为:', frustumSize);
+        // console.log('相机视口大小调整为:', frustumSize);
     }
 
     // 将所有图形居中
@@ -8016,7 +8020,7 @@ Shape3DViewer.prototype.updateCuttingPreview = function() {
         this.cuttingPreviewMeshes.push(borderLines);
     });
 
-    console.log('渲染的网格数:', this.cuttingPreviewMeshes.length);
+    // console.log('渲染的网格数:', this.cuttingPreviewMeshes.length);
 };
 
 Shape3DViewer.prototype.computeCrossSectionSegments = function(geometry, plane) {
@@ -8024,7 +8028,7 @@ Shape3DViewer.prototype.computeCrossSectionSegments = function(geometry, plane) 
     const positions = geometry.attributes.position.array;
     const epsilon = 0.001;
 
-    console.log('computeCrossSectionSegments: 顶点数 =', positions.length / 3);
+    // console.log('computeCrossSectionSegments: 顶点数 =', positions.length / 3);
 
     // 遍历三角形面
     let triangleCount = 0;
@@ -8091,7 +8095,7 @@ Shape3DViewer.prototype.computeCrossSectionSegments = function(geometry, plane) 
         }
     }
 
-    console.log('computeCrossSectionSegments: 三角形数 =', triangleCount, ', 线段数 =', segments.length);
+    // console.log('computeCrossSectionSegments: 三角形数 =', triangleCount, ', 线段数 =', segments.length);
 
     return segments;
 };
@@ -8103,7 +8107,7 @@ Shape3DViewer.prototype.connectLineSegmentsToContours = function(segments) {
     const contours = [];
     const usedSegments = new Set();
 
-    console.log('connectLineSegmentsToContours: 输入线段数 =', segments.length);
+    // console.log('connectLineSegmentsToContours: 输入线段数 =', segments.length);
 
     // 为每个端点创建一个邻接表
     const adjacency = new Map();
@@ -8138,7 +8142,7 @@ Shape3DViewer.prototype.connectLineSegmentsToContours = function(segments) {
         adjacency.get(key2).push({ point: p1, segmentIndex: index, end: 'p1' });
     });
 
-    console.log('connectLineSegmentsToContours: 邻接表节点数 =', adjacency.size);
+    // console.log('connectLineSegmentsToContours: 邻接表节点数 =', adjacency.size);
 
     // 从未使用的线段开始，构建轮廓
     for (let i = 0; i < segments.length; i++) {
@@ -8213,12 +8217,12 @@ Shape3DViewer.prototype.connectLineSegmentsToContours = function(segments) {
 
             if (contour.length >= 3) {
                 contours.push(contour);
-                console.log('connectLineSegmentsToContours: 创建轮廓，顶点数 =', contour.length);
+                // console.log('connectLineSegmentsToContours: 创建轮廓，顶点数 =', contour.length);
             }
         }
     }
 
-    console.log('connectLineSegmentsToContours: 输出轮廓数 =', contours.length);
+    // console.log('connectLineSegmentsToContours: 输出轮廓数 =', contours.length);
 
     return contours;
 };
