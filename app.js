@@ -170,9 +170,9 @@ class Shape3DViewer {
                 antialias: true, // 移动设备也启用抗锯齿，提升视觉效果
                 alpha: false,
                 powerPreference: "default", // 使用默认功耗模式
-                stencil: false,
+                stencil: true, // 启用模板缓冲，改善裁剪平面效果
                 depth: true,
-                logarithmicDepthBuffer: false,
+                logarithmicDepthBuffer: true, // 启用对数深度缓冲，改善裁剪平面的深度精度
                 preserveDrawingBuffer: false
             };
         } else {
@@ -181,7 +181,7 @@ class Shape3DViewer {
                 antialias: true, // 启用抗锯齿
                 alpha: true,
                 powerPreference: "high-performance",
-                stencil: false,
+                stencil: true, // 启用模板缓冲，改善裁剪平面效果
                 depth: true,
                 logarithmicDepthBuffer: false,
                 preserveDrawingBuffer: false,
@@ -401,9 +401,45 @@ class Shape3DViewer {
 
     // 使用three-bvh-csg执行高效的布尔运算
     performAdvancedCSGOperation(brushA, brushB, operation) {
-        if (!this.csgEvaluator || !window.CSG) {
-            this.showTooltip('CSG库未加载，使用传统方法', 1500);
+        console.log('performAdvancedCSGOperation 调用:', {
+            hasEvaluator: !!this.csgEvaluator,
+            hasWindowCSG: !!window.CSG,
+            operation
+        });
+
+        // 确保使用正确的常量值
+        if (typeof operation === 'undefined' || operation === null) {
+            console.error('CSG操作类型无效:', operation);
+            this.showTooltip('CSG操作类型无效', 1500);
             return null;
+        }
+
+        // 确保 CSG 库已加载
+        if (!window.CSG) {
+            console.error('CSG库未加载');
+            this.showTooltip('CSG库未加载，无法执行布尔运算', 1500);
+            return null;
+        }
+
+        // 确保 Evaluator 已初始化
+        if (!this.csgEvaluator) {
+            console.warn('CSG Evaluator未初始化，尝试重新初始化...');
+            try {
+                if (window.CSG.Evaluator) {
+                    this.csgEvaluator = new window.CSG.Evaluator();
+                    this.csgEvaluator.useGroups = true;
+                    this.csgEvaluator.attributes = ['position', 'normal'];
+                    console.log('CSG Evaluator 重新初始化成功');
+                } else {
+                    console.error('CSG Evaluator类不存在');
+                    this.showTooltip('CSG Evaluator类不存在', 1500);
+                    return null;
+                }
+            } catch (error) {
+                console.error('CSG Evaluator 初始化失败:', error);
+                this.showTooltip('CSG Evaluator初始化失败', 1500);
+                return null;
+            }
         }
 
         if (!brushA || !brushB || !brushA.geometry || !brushB.geometry) {
@@ -413,18 +449,33 @@ class Shape3DViewer {
         }
 
         try {
-            // 创建Brush对象
-            const brush1 = new window.CSG.Brush(brushA.geometry);
-            brush1.position.copy(brushA.position);
-            brush1.rotation.copy(brushA.rotation);
-            brush1.scale.copy(brushA.scale);
+            // 克隆几何体以避免修改原始几何体
+            const geom1 = brushA.geometry.clone();
+            const geom2 = brushB.geometry.clone();
+
+            // 应用变换到几何体顶点
+            geom1.applyMatrix4(brushA.matrixWorld);
+            geom2.applyMatrix4(brushB.matrixWorld);
+
+            console.log('几何体变换完成:', {
+                geom1Vertices: geom1.attributes.position.count,
+                geom2Vertices: geom2.attributes.position.count
+            });
+
+            // 创建Brush对象，位置设置为原点
+            const brush1 = new window.CSG.Brush(geom1);
+            brush1.position.set(0, 0, 0);
+            brush1.rotation.set(0, 0, 0);
+            brush1.scale.set(1, 1, 1);
             brush1.updateMatrixWorld();
 
-            const brush2 = new window.CSG.Brush(brushB.geometry);
-            brush2.position.copy(brushB.position);
-            brush2.rotation.copy(brushB.rotation);
-            brush2.scale.copy(brushB.scale);
+            const brush2 = new window.CSG.Brush(geom2);
+            brush2.position.set(0, 0, 0);
+            brush2.rotation.set(0, 0, 0);
+            brush2.scale.set(1, 1, 1);
             brush2.updateMatrixWorld();
+
+            console.log('Brush对象创建完成');
 
             // 设置材质
             brush1.material = brushA.material.clone();
@@ -433,6 +484,8 @@ class Shape3DViewer {
             // 准备几何体
             brush1.prepareGeometry();
             brush2.prepareGeometry();
+
+            console.log('几何体准备完成，开始执行CSG运算...');
 
             // 执行CSG运算（不传targetMesh参数，让库自动创建结果Brush）
             const result = this.csgEvaluator.evaluate(brush1, brush2, operation);
@@ -2717,15 +2770,17 @@ class Shape3DViewer {
         let material;
 
         if (this.isMobile) {
-            // 移动设备使用优化的材质
+            // 移动设备使用优化的材质，但启用双面渲染以支持裁剪平面
             material = new THREE.MeshPhongMaterial({
                 color: color,
                 transparent: false,
                 opacity: 1.0,
-                side: THREE.FrontSide,
+                side: THREE.DoubleSide, // 双面渲染，确保裁剪平面显示完整
                 flatShading: false,
                 shininess: 60, // 增加光泽度
-                specular: 0x444444
+                specular: 0x444444,
+                clipShadows: true, // 启用阴影裁剪
+                shadowSide: THREE.DoubleSide // 阴影也使用双面
             });
         } else {
             // 桌面设备使用高质量材质
@@ -2740,7 +2795,9 @@ class Shape3DViewer {
                 clearcoat: 0.3, // 清漆层，增加真实感
                 clearcoatRoughness: 0.25,
                 reflectivity: 0.5,
-                envMapIntensity: 1.0
+                envMapIntensity: 1.0,
+                clipShadows: true, // 启用阴影裁剪
+                shadowSide: THREE.DoubleSide // 阴影也使用双面
             });
         }
 
@@ -2758,6 +2815,9 @@ class Shape3DViewer {
         let count = 0;
         this.shapes.forEach((mesh, id) => {
             if (mesh && mesh.material) {
+                // 保存裁剪平面设置
+                const savedClippingPlanes = mesh.material.clippingPlanes;
+
                 // 确保每个图形使用独立的材质实例
                 if (!mesh.userData.ownMaterial) {
                     mesh.material = mesh.material.clone();
@@ -2765,6 +2825,10 @@ class Shape3DViewer {
                 }
                 mesh.material.color.setHex(colorHex);
                 mesh.userData.isRainbow = false;
+
+                // 恢复裁剪平面设置
+                mesh.material.clippingPlanes = savedClippingPlanes;
+
                 count++;
             }
         });
@@ -2777,11 +2841,17 @@ class Shape3DViewer {
     updateShapeColor(shapeId, colorValue) {
         const mesh = this.shapes.get(shapeId);
         if (mesh && mesh.material) {
+            // 保存裁剪平面设置
+            const savedClippingPlanes = mesh.material.clippingPlanes;
+
             // 将颜色值转换为THREE.Color
             mesh.material.color.setHex(parseInt(colorValue.replace('#', '0x')));
-            
+
             // 清除彩虹标记，因为用户手动设置了颜色
             mesh.userData.isRainbow = false;
+
+            // 恢复裁剪平面设置
+            mesh.material.clippingPlanes = savedClippingPlanes;
             
             // 如果是选中的图形，显示提示
             if (this.selectedShape === mesh) {
@@ -6786,6 +6856,18 @@ class Shape3DViewer {
                 return;
             }
 
+            // 确保 CSG 库已加载
+            if (!this.csgEvaluator && window.CSG && window.CSG.Evaluator) {
+                console.log('重新初始化 CSG Evaluator...');
+                try {
+                    this.csgEvaluator = new window.CSG.Evaluator();
+                    this.csgEvaluator.useGroups = true;
+                    this.csgEvaluator.attributes = ['position', 'normal'];
+                } catch (error) {
+                    console.error('CSG Evaluator 重新初始化失败:', error);
+                }
+            }
+
             try {
                 // 使用three-bvh-csg进行高效的布尔运算
                 let csgOperation;
@@ -6794,19 +6876,30 @@ class Shape3DViewer {
                 // 映射操作类型到three-bvh-csg常量
                 switch(operation) {
                     case 'subtract':
-                        csgOperation = window.CSG?.SUBTRACTION;
+                        csgOperation = window.CSG?.SUBTRACTION ?? window.CSG?.SUBTRACTION_NUM ?? 1;
                         break;
                     case 'union':
-                        csgOperation = window.CSG?.UNION;
+                        csgOperation = window.CSG?.UNION ?? window.CSG?.ADDITION ?? window.CSG?.UNION_NUM ?? 0;
                         break;
                     case 'intersect':
-                        csgOperation = window.CSG?.INTERSECTION;
+                        csgOperation = window.CSG?.INTERSECTION ?? window.CSG?.INTERSECTION_NUM ?? 3;
                         break;
                     default:
-                        csgOperation = window.CSG?.SUBTRACTION;
+                        csgOperation = window.CSG?.SUBTRACTION ?? 1;
                 }
 
-                if (!csgOperation || !window.CSG) {
+                console.log('布尔运算调试:', {
+                    operation,
+                    csgOperation,
+                    windowCSG: !!window.CSG,
+                    hasEvaluator: !!this.csgEvaluator,
+                    ADDITION: window.CSG?.ADDITION,
+                    UNION: window.CSG?.UNION,
+                    SUBTRACTION: window.CSG?.SUBTRACTION,
+                    INTERSECTION: window.CSG?.INTERSECTION
+                });
+
+                if (csgOperation === null || csgOperation === undefined || !window.CSG) {
                     this.showTooltip('CSG库未加载，无法执行布尔运算', 2000);
                     return;
                 }
