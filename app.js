@@ -4017,6 +4017,13 @@ class Shape3DViewer {
             });
         }
 
+        const mirrorCuttingPreviewBtn = document.getElementById('mirrorCuttingPreview');
+        if (mirrorCuttingPreviewBtn) {
+            mirrorCuttingPreviewBtn.addEventListener('click', () => {
+                this.mirrorCuttingPreview();
+            });
+        }
+
         // 最小化按钮事件监听器
         this.setupMinimizeButtons();
 
@@ -8154,6 +8161,15 @@ Shape3DViewer.prototype.resetCuttingPreviewView = function() {
     this.cuttingPreviewGroup.scale.set(1, 1, 1);
 
     this.showTooltip('已重置预览视图', 1500);
+};
+
+Shape3DViewer.prototype.mirrorCuttingPreview = function() {
+    if (!this.cuttingPreviewGroup) return;
+
+    // 水平镜像翻转：将X轴缩放取反
+    this.cuttingPreviewGroup.scale.x = -this.cuttingPreviewGroup.scale.x;
+
+    this.showTooltip('已水平镜像翻转', 1500);
 };
 
 Shape3DViewer.prototype.toggleCuttingPreviewMode = function() {
