@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>六面体展开图训练器</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Three.js r128 -->
+    <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+    <!-- OrbitControls -->
+    <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <!-- GSAP 3.12.2 -->
+    <script src="https://unpkg.com/gsap@3.12.2/dist/gsap.min.js"></script>
+
+    <!-- Noto Sans SC 字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* 基础样式 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+            overflow-x: hidden;
+        }
+
+        /* 玻璃面板效果 */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 面按钮 */
+        .face-btn {
+            width: 48px;
+            height: 48px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #e0e0e0;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .face-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .face-btn.active {
+            background: rgba(59, 130, 246, 0.3);
+            border-color: #3b82f6;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+        }
+
+        /* 图案按钮 */
+        .pattern-btn {
+            width: 56px;
+            height: 56px;
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.08);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .pattern-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+
+        .pattern-btn.active {
+            background: rgba(59, 130, 246, 0.3);
+            border-color: #3b82f6;
+            box-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
+        }
+
+        /* 工具按钮 */
+        .tool-btn {
+            padding: 10px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #e0e0e0;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tool-btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .tool-btn.active {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: #10b981;
+            color: #10b981;
+        }
+
+        /* 展开图面样式 */
+        .net-face {
+            width: 80px;
+            height: 80px;
+            border: 2px solid rgba(255, 255, 255, 0.25);
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.03);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .net-face:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        .net-face.selected {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: #3b82f6;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+        }
+
+        .net-face .pattern {
+            font-size: 32px;
+        }
+
+        .net-face .face-label {
+            position: absolute;
+            top: 4px;
+            left: 6px;
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        /* 移动提示 */
+        .move-hint {
+            position: absolute;
+            padding: 4px 8px;
+            background: rgba(59, 130, 246, 0.9);
+            color: white;
+            font-size: 11px;
+            border-radius: 4px;
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .move-hint.visible {
+            opacity: 1;
+        }
+
+        /* 提示框 */
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: nowrap;
+            z-index: 1000;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            max-width: 200px;
+        }
+
+        .tooltip.visible {
+            opacity: 1;
+        }
+
+        .tooltip::after {
+            content: '';
+            position: absolute;
+            border: 6px solid transparent;
+        }
+
+        .tooltip.bottom::after {
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-bottom-color: rgba(0, 0, 0, 0.85);
+        }
+
+        .tooltip.top::after {
+            bottom: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-top-color: rgba(0, 0, 0, 0.85);
+        }
+
+        /* 滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* 3D预览容器 */
+        #preview-container {
+            position: relative;
+            width: 100%;
+            height: 300px;
+            border-radius: 8px;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        #preview-container canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        /* 展开图网格布局 */
+        .net-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 80px);
+            grid-template-rows: repeat(3, 80px);
+            gap: 4px;
+            justify-content: center;
+        }
+
+        /* 分割线 */
+        .divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+            margin: 16px 0;
+        }
+
+        /* 选择器样式 */
+        .selector-btn {
+            padding: 8px 14px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 6px;
+            background: transparent;
+            color: #a0a0a0;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .selector-btn:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: #e0e0e0;
+        }
+
+        .selector-btn.active {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: #3b82f6;
+            color: #3b82f6;
+        }
+
+        /* 技巧卡片 */
+        .tip-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+
+        .tip-card h4 {
+            color: #3b82f6;
+            font-size: 13px;
+            margin-bottom: 6px;
+        }
+
+        .tip-card p {
+            color: #a0a0a0;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        /* 动画 */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .animate-pulse {
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Header -->
+    <header class="glass-panel fixed top-0 left-0 right-0 z-50 px-6 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-4">
+            <button id="backBtn" class="tool-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                返回
+            </button>
+            <h1 class="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                六面体展开图训练器
+            </h1>
+        </div>
+        <div class="flex items-center gap-3">
+            <button id="autoRotateBtn" class="tool-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                    <polyline points="21 3 21 9 15 9"/>
+                </svg>
+                自动旋转
+            </button>
+            <button id="resetViewBtn" class="tool-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 6v6l4 2"/>
+                </svg>
+                重置视角
+            </button>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="pt-20 px-4 pb-8 flex gap-4 min-h-screen">
+        <!-- 左侧面板 -->
+        <aside class="glass-panel w-64 flex-shrink-0 p-4 h-[calc(100vh-6rem)] overflow-y-auto">
+            <!-- 展开图类型选择 -->
+            <section class="mb-6">
+                <h3 class="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"/>
+                        <rect x="14" y="3" width="7" height="7"/>
+                        <rect x="14" y="14" width="7" height="7"/>
+                        <rect x="3" y="14" width="7" height="7"/>
+                    </svg>
+                    展开图类型
+                </h3>
+                <div class="grid grid-cols-2 gap-2">
+                    <button class="selector-btn active" data-type="1-4-1">1-4-1型</button>
+                    <button class="selector-btn" data-type="2-3-1">2-3-1型</button>
+                    <button class="selector-btn" data-type="2-2-2">2-2-2型</button>
+                    <button class="selector-btn" data-type="3-3">3-3型</button>
+                </div>
+            </section>
+
+            <div class="divider"></div>
+
+            <!-- 移面操作 -->
+            <section class="mb-6">
+                <h3 class="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="5 9 2 12 5 15"/>
+                        <polyline points="9 5 12 2 15 5"/>
+                        <polyline points="15 19 12 22 9 19"/>
+                        <polyline points="19 9 22 12 19 15"/>
+                        <line x1="2" y1="12" x2="22" y2="12"/>
+                        <line x1="12" y1="2" x2="12" y2="22"/>
+                    </svg>
+                    移面操作
+                </h3>
+                <div class="space-y-2">
+                    <button class="tool-btn w-full justify-center" id="rotateLeftBtn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="1 4 1 10 7 10"/>
+                            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+                        </svg>
+                        向左旋转
+                    </button>
+                    <button class="tool-btn w-full justify-center" id="rotateRightBtn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="23 4 23 10 17 10"/>
+                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                        </svg>
+                        向右旋转
+                    </button>
+                    <button class="tool-btn w-full justify-center" id="flipHBtn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M8 3H5a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h3"/>
+                            <path d="M16 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3"/>
+                            <line x1="12" y1="20" x2="12" y2="4"/>
+                        </svg>
+                        水平翻转
+                    </button>
+                    <button class="tool-btn w-full justify-center" id="flipVBtn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v3"/>
+                            <path d="M21 16v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3"/>
+                            <line x1="4" y1="12" x2="20" y2="12"/>
+                        </svg>
+                        垂直翻转
+                    </button>
+                </div>
+            </section>
+
+            <div class="divider"></div>
+
+            <!-- 绘图工具 -->
+            <section class="mb-6">
+                <h3 class="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 19l7-7 3 3-7 7-3-3z"/>
+                        <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>
+                        <path d="M2 2l7.586 7.586"/>
+                        <circle cx="11" cy="11" r="2"/>
+                    </svg>
+                    绘图工具
+                </h3>
+                <div class="grid grid-cols-3 gap-2">
+                    <button class="tool-btn justify-center" id="clearFaceBtn" title="清除当前面">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                    </button>
+                    <button class="tool-btn justify-center" id="clearAllBtn" title="清除所有面">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/>
+                            <line x1="18" y1="9" x2="12" y2="15"/>
+                            <line x1="12" y1="9" x2="18" y2="15"/>
+                        </svg>
+                    </button>
+                    <button class="tool-btn justify-center" id="randomBtn" title="随机生成">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+                            <circle cx="8" cy="8" r="1.5" fill="currentColor"/>
+                            <circle cx="16" cy="8" r="1.5" fill="currentColor"/>
+                            <circle cx="8" cy="16" r="1.5" fill="currentColor"/>
+                            <circle cx="16" cy="16" r="1.5" fill="currentColor"/>
+                            <circle cx="12" cy="12" r="1.5" fill="currentColor"/>
+                        </svg>
+                    </button>
+                </div>
+            </section>
+
+            <div class="divider"></div>
+
+            <!-- 图案库 -->
+            <section>
+                <h3 class="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                    </svg>
+                    图案库
+                </h3>
+                <div class="grid grid-cols-3 gap-2" id="patternLibrary">
+                    <!-- 基础图案 -->
+                    <button class="pattern-btn" data-pattern="circle" title="圆形">
+                        <span>●</span>
+                    </button>
+                    <button class="pattern-btn" data-pattern="triangle" title="三角形">
+                        <span>▲</span>
+                    </button>
+                    <button class="pattern-btn" data-pattern="square" title="正方形">
+                        <span>■</span>
+                    </button>
+                    <button class="pattern-btn" data-pattern="diamond" title="菱形">
+                        <span>◆</span>
+                    </button>
+                    <button class="pattern-btn" data-pattern="star" title="星形">
+                        <span>★</span>
+                    </button>
+                    <button class="pattern-btn" data-pattern="cross" title="十字">
+                        <span>✚</span>
+                    </button>
+                    <button class="pattern-btn" data-pattern="heart" title="心形">
+                        <span>♥</span>
+                    </button>
+                    <button class="pattern-btn" data-pattern="moon" title="月牙">
+                        <span>☽</span>
+                    </button>
+                    <button class="pattern-btn" data-pattern="lightning" title="闪电">
+                        <span>⚡</span>
+                    </button>
+                    <!-- 方向箭头 -->
+                    <button class="pattern-btn" data-pattern="arrow-up" title="向上箭头">
+                        <span>↑</span>
+                    </button>
+                    <button class="pattern-btn" data-pattern="arrow-down" title="向下箭头">
+                        <span>↓</span>
+                    </button>
+                    <button class="pattern-btn" data-pattern="arrow-left" title="向左箭头">
+                        <span>←</span>
+                    </button>
+                    <button class="pattern-btn" data-pattern="arrow-right" title="向右箭头">
+                        <span>→</span>
+                    </button>
+                    <!-- 线条图案 -->
+                    <button class="pattern-btn" data-pattern="line-h" title="横线">
+                        <span>—</span>
+                    </button>
+                    <button class="pattern-btn" data-pattern="line-v" title="竖线">
+                        <span>|</span>
+                    </button>
+                    <button class="pattern-btn" data-pattern="line-d" title="斜线">
+                        <span>/</span>
+                    </button>
+                </div>
+            </section>
+        </aside>
+
+        <!-- 中间区域 -->
+        <div class="flex-1 flex flex-col gap-4">
+            <!-- 2D展开图编辑区 -->
+            <section class="glass-panel p-6 flex-1">
+                <h2 class="text-lg font-semibold text-gray-200 mb-4 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                        <line x1="3" y1="9" x2="21" y2="9"/>
+                        <line x1="9" y1="21" x2="9" y2="9"/>
+                    </svg>
+                    2D展开图编辑区
+                </h2>
+
+                <!-- 展开图网格 -->
+                <div class="flex justify-center items-center py-4">
+                    <div class="net-grid" id="netGrid">
+                        <!-- 第一行 -->
+                        <div class="net-face" data-position="0-0" data-face="">
+                            <span class="face-label"></span>
+                            <span class="pattern"></span>
+                        </div>
+                        <div class="net-face" data-position="0-1" data-face="top">
+                            <span class="face-label">顶面</span>
+                            <span class="pattern"></span>
+                        </div>
+                        <div class="net-face" data-position="0-2" data-face="">
+                            <span class="face-label"></span>
+                            <span class="pattern"></span>
+                        </div>
+                        <div class="net-face" data-position="0-3" data-face="">
+                            <span class="face-label"></span>
+                            <span class="pattern"></span>
+                        </div>
+
+                        <!-- 第二行 -->
+                        <div class="net-face" data-position="1-0" data-face="left">
+                            <span class="face-label">左面</span>
+                            <span class="pattern"></span>
+                        </div>
+                        <div class="net-face selected" data-position="1-1" data-face="front">
+                            <span class="face-label">前面</span>
+                            <span class="pattern"></span>
+                        </div>
+                        <div class="net-face" data-position="1-2" data-face="right">
+                            <span class="face-label">右面</span>
+                            <span class="pattern"></span>
+                        </div>
+                        <div class="net-face" data-position="1-3" data-face="back">
+                            <span class="face-label">后面</span>
+                            <span class="pattern"></span>
+                        </div>
+
+                        <!-- 第三行 -->
+                        <div class="net-face" data-position="2-0" data-face="">
+                            <span class="face-label"></span>
+                            <span class="pattern"></span>
+                        </div>
+                        <div class="net-face" data-position="2-1" data-face="bottom">
+                            <span class="face-label">底面</span>
+                            <span class="pattern"></span>
+                        </div>
+                        <div class="net-face" data-position="2-2" data-face="">
+                            <span class="face-label"></span>
+                            <span class="pattern"></span>
+                        </div>
+                        <div class="net-face" data-position="2-3" data-face="">
+                            <span class="face-label"></span>
+                            <span class="pattern"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 提示信息 -->
+                <div class="text-center text-sm text-gray-400 mt-4">
+                    <p>点击展开图的面选中后，可从左侧图案库添加图案</p>
+                    <p class="text-xs text-gray-500 mt-1">当前选中: <span id="selectedFaceLabel" class="text-blue-400">前面</span></p>
+                </div>
+            </section>
+
+            <!-- 考试技巧提示 -->
+            <section class="glass-panel p-4">
+                <h3 class="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="16" x2="12" y2="12"/>
+                        <line x1="12" y1="8" x2="12.01" y2="8"/>
+                    </svg>
+                    考试技巧提示
+                </h3>
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="tip-card">
+                        <h4>相对面法则</h4>
+                        <p>展开图中相隔一个面的两个面是相对面，折叠后不可能相邻。</p>
+                    </div>
+                    <div class="tip-card">
+                        <h4>相邻面判断</h4>
+                        <p>展开图中有公共边的两个面，折叠后是相邻面，可通过相对位置判断。</p>
+                    </div>
+                    <div class="tip-card">
+                        <h4>L型法则</h4>
+                        <p>形成L型的三个面，中间面是转折面，两侧面的相对位置在折叠后会改变。</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- 右侧面板 -->
+        <aside class="glass-panel w-72 flex-shrink-0 p-4 h-[calc(100vh-6rem)] overflow-y-auto">
+            <!-- 3D立方体预览 -->
+            <section class="mb-6">
+                <h3 class="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                        <line x1="12" y1="22.08" x2="12" y2="12"/>
+                    </svg>
+                    3D立方体预览
+                </h3>
+                <div id="preview-container">
+                    <!-- Three.js渲染容器 -->
+                </div>
+                <div class="text-center text-xs text-gray-500 mt-2">
+                    拖动旋转 | 滚轮缩放
+                </div>
+            </section>
+
+            <div class="divider"></div>
+
+            <!-- 面选择器 -->
+            <section class="mb-6">
+                <h3 class="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"/>
+                        <rect x="14" y="3" width="7" height="7"/>
+                        <rect x="14" y="14" width="7" height="7"/>
+                        <rect x="3" y="14" width="7" height="7"/>
+                    </svg>
+                    面选择器
+                </h3>
+                <div class="grid grid-cols-3 gap-2" id="faceSelector">
+                    <div></div>
+                    <button class="face-btn" data-face="top" title="顶面">顶</button>
+                    <div></div>
+                    <button class="face-btn" data-face="left" title="左面">左</button>
+                    <button class="face-btn active" data-face="front" title="前面">前</button>
+                    <button class="face-btn" data-face="right" title="右面">右</button>
+                    <div></div>
+                    <button class="face-btn" data-face="bottom" title="底面">底</button>
+                    <button class="face-btn" data-face="back" title="后面">后</button>
+                </div>
+            </section>
+
+            <div class="divider"></div>
+
+            <!-- 面信息显示 -->
+            <section class="mb-6">
+                <h3 class="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="16" x2="12" y2="12"/>
+                        <line x1="12" y1="8" x2="12.01" y2="8"/>
+                    </svg>
+                    面信息
+                </h3>
+                <div class="bg-black/20 rounded-lg p-3 text-sm">
+                    <div class="flex justify-between mb-2">
+                        <span class="text-gray-400">当前面:</span>
+                        <span id="infoCurrentFace" class="text-blue-400">前面</span>
+                    </div>
+                    <div class="flex justify-between mb-2">
+                        <span class="text-gray-400">图案:</span>
+                        <span id="infoPattern" class="text-green-400">无</span>
+                    </div>
+                    <div class="flex justify-between mb-2">
+                        <span class="text-gray-400">相对面:</span>
+                        <span id="infoOpposite" class="text-yellow-400">后面</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">相邻面:</span>
+                        <span id="infoAdjacent" class="text-purple-400">顶、底、左、右</span>
+                    </div>
+                </div>
+            </section>
+
+            <div class="divider"></div>
+
+            <!-- 快捷键帮助 -->
+            <section>
+                <h3 class="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="4" width="20" height="16" rx="2" ry="2"/>
+                        <path d="M6 8h.001M10 8h.001M14 8h.001M18 8h.001M8 12h.001M12 12h.001M16 12h.001M6 16h12"/>
+                    </svg>
+                    快捷键
+                </h3>
+                <div class="space-y-2 text-xs">
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">旋转视角</span>
+                        <span class="text-gray-500">鼠标拖动</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">缩放</span>
+                        <span class="text-gray-500">滚轮</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">选择面</span>
+                        <span class="text-gray-500">点击</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">切换展开图</span>
+                        <span class="text-gray-500">1-4 数字键</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">清除当前面</span>
+                        <span class="text-gray-500">Delete</span>
+                    </div>
+                </div>
+            </section>
+        </aside>
+    </main>
+
+    <!-- Tooltip 提示框 -->
+    <div id="tooltip" class="tooltip"></div>
+
+    <!-- 移动提示 -->
+    <div id="moveHint" class="move-hint"></div>
+
+    <!-- JavaScript -->
+    <script>
+        // JavaScript代码将在后续任务中添加
+    </script>
+</body>
+</html>
