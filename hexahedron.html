@@ -397,6 +397,30 @@
         .animate-float {
             animation: float 3s ease-in-out infinite;
         }
+
+        /* 移面指示器样式 */
+        .move-indicator {
+            opacity: 0;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        .net-face-element:hover .move-indicator {
+            opacity: 1;
+        }
+
+        .move-indicator:hover {
+            transform: scale(1.3) !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        .move-indicator:active {
+            transform: scale(1.1) !important;
+        }
+
+        /* 移面指示器始终显示（选中面时） */
+        .net-face-element.selected .move-indicator {
+            opacity: 1;
+        }
     </style>
 </head>
 <body class="min-h-screen">
@@ -836,6 +860,22 @@
                     <div class="flex justify-between">
                         <span class="text-gray-400">切换展开图</span>
                         <span class="text-gray-500">1-4 数字键</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">移面</span>
+                        <span class="text-gray-500">方向键</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">撤销移面</span>
+                        <span class="text-gray-500">Ctrl+Shift+Z</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">重做移面</span>
+                        <span class="text-gray-500">Ctrl+Shift+Y</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">重置展开图</span>
+                        <span class="text-gray-500">R键</span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-gray-400">清除当前面</span>
@@ -1349,6 +1389,8 @@
                 faceElements.forEach(el => el.style.borderColor = 'rgba(255, 255, 255, 0.3)');
                 container.style.borderColor = '#3b82f6';
                 container.style.boxShadow = '0 0 10px rgba(59, 130, 246, 0.5)';
+                // 更新移面指示器
+                updateAllMoveIndicators();
             });
 
             // 鼠标悬停效果
@@ -1457,6 +1499,9 @@
                 faceElements[currentFaceIndex].style.borderColor = '#3b82f6';
                 faceElements[currentFaceIndex].style.boxShadow = '0 0 10px rgba(59, 130, 246, 0.5)';
             }
+
+            // 更新移面指示器
+            setTimeout(updateAllMoveIndicators, 50);
         }
 
         /**
@@ -1961,6 +2006,9 @@
             // 初始化历史记录
             saveToHistory();
 
+            // 初始化移面历史记录
+            saveMoveHistory();
+
             // 绑定事件
             bindEvents();
 
@@ -1968,7 +2016,7 @@
             updateUI();
 
             // 显示欢迎提示
-            showTooltip('欢迎使用六面体展开图训练器！', 2000);
+            showTooltip('欢迎使用六面体展开图训练器！选中面片后可使用方向键移面', 2500);
 
             console.log('初始化完成');
         }
@@ -3314,6 +3362,40 @@
                     redo();
                 }
 
+                // Ctrl+Shift+Z 撤销移面
+                if (e.ctrlKey && e.shiftKey && e.key === 'Z') {
+                    e.preventDefault();
+                    undoMove();
+                }
+
+                // Ctrl+Shift+Y 重做移面
+                if (e.ctrlKey && e.shiftKey && e.key === 'Y') {
+                    e.preventDefault();
+                    redoMove();
+                }
+
+                // R键重置展开图
+                if (e.key === 'r' && !e.ctrlKey && !e.shiftKey && !e.target.matches('input, textarea')) {
+                    resetNet();
+                }
+
+                // 方向键移面
+                if (!e.target.matches('input, textarea')) {
+                    if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        executeMove(currentFaceIndex, MOVE_DIRECTIONS.UP);
+                    } else if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        executeMove(currentFaceIndex, MOVE_DIRECTIONS.DOWN);
+                    } else if (e.key === 'ArrowLeft') {
+                        e.preventDefault();
+                        executeMove(currentFaceIndex, MOVE_DIRECTIONS.LEFT);
+                    } else if (e.key === 'ArrowRight') {
+                        e.preventDefault();
+                        executeMove(currentFaceIndex, MOVE_DIRECTIONS.RIGHT);
+                    }
+                }
+
                 // 空格键切换展开/折叠
                 if (e.key === ' ' && !e.target.matches('input, textarea')) {
                     e.preventDefault();
@@ -3330,7 +3412,7 @@
             // 获取该类型的第一个变体
             const typeInfo = NET_TYPE_LIST.find(t => t.id === type);
             if (typeInfo && typeInfo.variants.length > 0) {
-                currentNetLayout = NET_STRUCTURES[typeInfo.variants[0]];
+                currentNetLayout = JSON.parse(JSON.stringify(NET_STRUCTURES[typeInfo.variants[0]]));
                 renderNet();
 
                 // 更新按钮状态
@@ -3340,6 +3422,11 @@
                         btn.classList.add('active');
                     }
                 });
+
+                // 重置移面历史
+                moveHistory = [];
+                moveHistoryIndex = -1;
+                saveMoveHistory();
 
                 showTooltip(`已切换到${typeInfo.name}`, 1500);
             }
@@ -3391,6 +3478,648 @@
 
             updateAllTextures();
             showTooltip(direction === 'horizontal' ? '已水平翻转' : '已垂直翻转', 1500);
+        }
+
+        // ============================================
+        // 移面法交互系统
+        // ============================================
+
+        // 移面方向常量
+        const MOVE_DIRECTIONS = {
+            UP: 'up',
+            DOWN: 'down',
+            LEFT: 'left',
+            RIGHT: 'right'
+        };
+
+        // 移面历史记录（用于移面操作的撤销/重做）
+        let moveHistory = [];
+        let moveHistoryIndex = -1;
+        const MAX_MOVE_HISTORY = 50;
+
+        // 当前移面指示器元素
+        let moveIndicators = [];
+
+        /**
+         * 获取当前布局中所有面的网格位置映射
+         * @returns {Object} 位置映射 {gridX_gridY: faceIndex}
+         */
+        function getGridPositionMap() {
+            if (!currentNetLayout) return {};
+
+            const map = {};
+            currentNetLayout.layout.forEach(item => {
+                const faceIndex = faceIds.indexOf(item.faceId);
+                if (faceIndex !== -1) {
+                    map[`${item.gridX}_${item.gridY}`] = {
+                        faceIndex: faceIndex,
+                        faceId: item.faceId,
+                        gridX: item.gridX,
+                        gridY: item.gridY
+                    };
+                }
+            });
+            return map;
+        }
+
+        /**
+         * 获取当前布局的边界
+         * @returns {Object} 边界 {minX, maxX, minY, maxY}
+         */
+        function getLayoutBounds() {
+            if (!currentNetLayout || !currentNetLayout.layout) {
+                return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+            }
+
+            const layout = currentNetLayout.layout;
+            let minX = Infinity, maxX = -Infinity;
+            let minY = Infinity, maxY = -Infinity;
+
+            layout.forEach(item => {
+                minX = Math.min(minX, item.gridX);
+                maxX = Math.max(maxX, item.gridX);
+                minY = Math.min(minY, item.gridY);
+                maxY = Math.max(maxY, item.gridY);
+            });
+
+            return { minX, maxX, minY, maxY };
+        }
+
+        /**
+         * 检查移面是否有效
+         * @param {number} faceIndex - 面索引
+         * @param {string} direction - 移动方向
+         * @returns {Object} {valid: boolean, type: string, targetPos: Object}
+         */
+        function isValidMove(faceIndex, direction) {
+            if (!currentNetLayout || faceIndex < 0 || faceIndex >= faceIds.length) {
+                return { valid: false, reason: '无效的参数' };
+            }
+
+            const faceId = faceIds[faceIndex];
+            const layoutItem = currentNetLayout.layout.find(item => item.faceId === faceId);
+            if (!layoutItem) {
+                return { valid: false, reason: '面不在当前布局中' };
+            }
+
+            const { gridX, gridY } = layoutItem;
+            const posMap = getGridPositionMap();
+            const bounds = getLayoutBounds();
+
+            // 计算目标位置
+            let targetX = gridX;
+            let targetY = gridY;
+
+            switch (direction) {
+                case MOVE_DIRECTIONS.UP:
+                    targetY = gridY - 1;
+                    break;
+                case MOVE_DIRECTIONS.DOWN:
+                    targetY = gridY + 1;
+                    break;
+                case MOVE_DIRECTIONS.LEFT:
+                    targetX = gridX - 1;
+                    break;
+                case MOVE_DIRECTIONS.RIGHT:
+                    targetX = gridX + 1;
+                    break;
+            }
+
+            const targetKey = `${targetX}_${targetY}`;
+            const targetOccupied = posMap[targetKey];
+
+            // 检查是否是垂直滚动移面（目标位置为空）
+            if (!targetOccupied) {
+                // 检查目标位置是否与现有面相邻（确保连通性）
+                const adjacentPositions = [
+                    `${targetX}_${targetY - 1}`,
+                    `${targetX}_${targetY + 1}`,
+                    `${targetX - 1}_${targetY}`,
+                    `${targetX + 1}_${targetY}`
+                ];
+
+                const hasAdjacent = adjacentPositions.some(key => {
+                    const pos = posMap[key];
+                    return pos && pos.faceIndex !== faceIndex;
+                });
+
+                if (hasAdjacent) {
+                    // 检查移面后是否仍然连通
+                    const tempLayout = currentNetLayout.layout.map(item => {
+                        if (item.faceId === faceId) {
+                            return { ...item, gridX: targetX, gridY: targetY };
+                        }
+                        return item;
+                    });
+
+                    if (validateNetConnectivity(tempLayout)) {
+                        return {
+                            valid: true,
+                            type: 'scroll',
+                            targetPos: { gridX: targetX, gridY: targetY },
+                            reason: '垂直滚动移面'
+                        };
+                    }
+                }
+            }
+
+            // 检查是否是平行移面（四连排的首尾移动）
+            const parallelMove = checkParallelMove(faceIndex, direction, posMap, bounds);
+            if (parallelMove.valid) {
+                return parallelMove;
+            }
+
+            return { valid: false, reason: '移面后展开图不连通或无效' };
+        }
+
+        /**
+         * 检查平行移面是否有效
+         * @param {number} faceIndex - 面索引
+         * @param {string} direction - 移动方向
+         * @param {Object} posMap - 位置映射
+         * @param {Object} bounds - 边界
+         * @returns {Object} {valid: boolean, type: string, targetPos: Object}
+         */
+        function checkParallelMove(faceIndex, direction, posMap, bounds) {
+            const faceId = faceIds[faceIndex];
+            const layoutItem = currentNetLayout.layout.find(item => item.faceId === faceId);
+            if (!layoutItem) {
+                return { valid: false };
+            }
+
+            const { gridX, gridY } = layoutItem;
+
+            // 检查水平方向的四连排
+            if (direction === MOVE_DIRECTIONS.LEFT || direction === MOVE_DIRECTIONS.RIGHT) {
+                // 获取同行所有面
+                const rowFaces = currentNetLayout.layout.filter(item => item.gridY === gridY);
+                rowFaces.sort((a, b) => a.gridX - b.gridX);
+
+                // 检查是否形成连续的四连排
+                if (rowFaces.length === 4) {
+                    const isContinuous = (rowFaces[1].gridX - rowFaces[0].gridX === 1) &&
+                                        (rowFaces[2].gridX - rowFaces[1].gridX === 1) &&
+                                        (rowFaces[3].gridX - rowFaces[2].gridX === 1);
+
+                    if (isContinuous) {
+                        // 检查当前面是否是首或尾
+                        const isFirst = rowFaces[0].faceId === faceId;
+                        const isLast = rowFaces[3].faceId === faceId;
+
+                        if (direction === MOVE_DIRECTIONS.LEFT && isLast) {
+                            // 尾部向左移动到头部前面
+                            const targetX = rowFaces[0].gridX - 1;
+                            if (!posMap[`${targetX}_${gridY}`]) {
+                                return {
+                                    valid: true,
+                                    type: 'parallel',
+                                    targetPos: { gridX: targetX, gridY: gridY },
+                                    reason: '平行移面（水平）'
+                                };
+                            }
+                        } else if (direction === MOVE_DIRECTIONS.RIGHT && isFirst) {
+                            // 头部向右移动到尾部后面
+                            const targetX = rowFaces[3].gridX + 1;
+                            if (!posMap[`${targetX}_${gridY}`]) {
+                                return {
+                                    valid: true,
+                                    type: 'parallel',
+                                    targetPos: { gridX: targetX, gridY: gridY },
+                                    reason: '平行移面（水平）'
+                                };
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 检查垂直方向的四连排
+            if (direction === MOVE_DIRECTIONS.UP || direction === MOVE_DIRECTIONS.DOWN) {
+                // 获取同列所有面
+                const colFaces = currentNetLayout.layout.filter(item => item.gridX === gridX);
+                colFaces.sort((a, b) => a.gridY - b.gridY);
+
+                // 检查是否形成连续的四连排
+                if (colFaces.length === 4) {
+                    const isContinuous = (colFaces[1].gridY - colFaces[0].gridY === 1) &&
+                                        (colFaces[2].gridY - colFaces[1].gridY === 1) &&
+                                        (colFaces[3].gridY - colFaces[2].gridY === 1);
+
+                    if (isContinuous) {
+                        // 检查当前面是否是首或尾
+                        const isFirst = colFaces[0].faceId === faceId;
+                        const isLast = colFaces[3].faceId === faceId;
+
+                        if (direction === MOVE_DIRECTIONS.UP && isLast) {
+                            // 尾部向上移动到头部前面
+                            const targetY = colFaces[0].gridY - 1;
+                            if (!posMap[`${gridX}_${targetY}`]) {
+                                return {
+                                    valid: true,
+                                    type: 'parallel',
+                                    targetPos: { gridX: gridX, gridY: targetY },
+                                    reason: '平行移面（垂直）'
+                                };
+                            }
+                        } else if (direction === MOVE_DIRECTIONS.DOWN && isFirst) {
+                            // 头部向下移动到尾部后面
+                            const targetY = colFaces[3].gridY + 1;
+                            if (!posMap[`${gridX}_${targetY}`]) {
+                                return {
+                                    valid: true,
+                                    type: 'parallel',
+                                    targetPos: { gridX: gridX, gridY: targetY },
+                                    reason: '平行移面（垂直）'
+                                };
+                            }
+                        }
+                    }
+                }
+            }
+
+            return { valid: false };
+        }
+
+        /**
+         * 验证展开图连通性
+         * @param {Array} layout - 布局数组
+         * @returns {boolean} 是否连通
+         */
+        function validateNetConnectivity(layout) {
+            if (!layout || layout.length !== 6) return false;
+
+            // 使用BFS检查所有面是否连通
+            const visited = new Set();
+            const queue = [layout[0]];
+            visited.add(layout[0].faceId);
+
+            while (queue.length > 0) {
+                const current = queue.shift();
+
+                // 查找相邻面
+                layout.forEach(item => {
+                    if (visited.has(item.faceId)) return;
+
+                    const isAdjacent =
+                        (Math.abs(item.gridX - current.gridX) === 1 && item.gridY === current.gridY) ||
+                        (Math.abs(item.gridY - current.gridY) === 1 && item.gridX === current.gridX);
+
+                    if (isAdjacent) {
+                        visited.add(item.faceId);
+                        queue.push(item);
+                    }
+                });
+            }
+
+            return visited.size === 6;
+        }
+
+        /**
+         * 执行移面操作
+         * @param {number} faceIndex - 面索引
+         * @param {string} direction - 移动方向
+         */
+        function executeMove(faceIndex, direction) {
+            const moveInfo = isValidMove(faceIndex, direction);
+            if (!moveInfo.valid) {
+                showTooltip('无法移动: ' + moveInfo.reason, 2000);
+                return false;
+            }
+
+            const faceId = faceIds[faceIndex];
+            const layoutItem = currentNetLayout.layout.find(item => item.faceId === faceId);
+            if (!layoutItem) return false;
+
+            // 保存历史状态
+            saveMoveHistory();
+
+            const fromX = layoutItem.gridX;
+            const fromY = layoutItem.gridY;
+            const toX = moveInfo.targetPos.gridX;
+            const toY = moveInfo.targetPos.gridY;
+
+            // 计算旋转角度（垂直滚动移面需要旋转）
+            let rotationChange = 0;
+            if (moveInfo.type === 'scroll') {
+                if (direction === MOVE_DIRECTIONS.UP) {
+                    rotationChange = 90;  // 向上滚动，图案顺时针旋转90°
+                } else if (direction === MOVE_DIRECTIONS.DOWN) {
+                    rotationChange = -90;  // 向下滚动，图案逆时针旋转90°
+                }
+            }
+
+            // 执行动画
+            animateFaceMove(faceIndex, fromX, fromY, toX, toY, rotationChange, () => {
+                // 更新布局
+                layoutItem.gridX = toX;
+                layoutItem.gridY = toY;
+
+                // 更新图案旋转
+                if (rotationChange !== 0) {
+                    const faceInfo = faceData[faceIndex];
+                    if (faceInfo) {
+                        faceInfo.rotation = (faceInfo.rotation + rotationChange + 360) % 360;
+                        renderFaceContent(faceIndex);
+                    }
+                }
+
+                // 重新渲染展开图
+                renderNet();
+
+                // 更新3D视图
+                if (isUnfolded) {
+                    animateToNet();
+                }
+
+                showTooltip(moveInfo.reason + '成功', 1500);
+            });
+
+            return true;
+        }
+
+        /**
+         * 动画移动面片
+         * @param {number} faceIndex - 面索引
+         * @param {number} fromX - 起始网格X
+         * @param {number} fromY - 起始网格Y
+         * @param {number} toX - 目标网格X
+         * @param {number} toY - 目标网格Y
+         * @param {number} rotationChange - 旋转角度变化
+         * @param {Function} onComplete - 完成回调
+         */
+        function animateFaceMove(faceIndex, fromX, fromY, toX, toY, rotationChange, onComplete) {
+            const element = faceElements[faceIndex];
+            if (!element || !netCanvas) {
+                if (onComplete) onComplete();
+                return;
+            }
+
+            // 计算像素位置
+            const bounds = getLayoutBounds();
+            const netWidth = (bounds.maxX - bounds.minX + 1) * FACE_SIZE;
+            const netHeight = (bounds.maxY - bounds.minY + 1) * FACE_SIZE;
+            const startX = (netCanvas.width - netWidth) / 2;
+            const startY = (netCanvas.height - netHeight) / 2;
+
+            const fromPixelX = startX + (fromX - bounds.minX) * FACE_SIZE;
+            const fromPixelY = startY + (fromY - bounds.minY) * FACE_SIZE;
+            const toPixelX = startX + (toX - bounds.minX) * FACE_SIZE;
+            const toPixelY = startY + (toY - bounds.minY) * FACE_SIZE;
+
+            // 创建临时动画元素
+            element.style.zIndex = '100';
+
+            // 使用GSAP动画
+            const timeline = gsap.timeline({
+                onComplete: () => {
+                    element.style.zIndex = '';
+                    if (onComplete) onComplete();
+                }
+            });
+
+            // 位置动画
+            timeline.to(element, {
+                left: toPixelX + 'px',
+                top: toPixelY + 'px',
+                duration: 0.4,
+                ease: 'power2.out'
+            });
+
+            // 旋转动画（如果有）
+            if (rotationChange !== 0) {
+                const canvas = element.querySelector('.face-canvas');
+                if (canvas) {
+                    timeline.to(canvas, {
+                        rotation: rotationChange,
+                        duration: 0.4,
+                        ease: 'power2.out'
+                    }, 0);
+                }
+            }
+        }
+
+        /**
+         * 添加移面指示器到指定面
+         * @param {number} faceIndex - 面索引
+         */
+        function addMoveIndicators(faceIndex) {
+            // 移除现有指示器
+            removeMoveIndicators();
+
+            // 检查四个方向是否可移
+            const directions = [
+                { dir: MOVE_DIRECTIONS.UP, symbol: '↑', label: '上移' },
+                { dir: MOVE_DIRECTIONS.DOWN, symbol: '↓', label: '下移' },
+                { dir: MOVE_DIRECTIONS.LEFT, symbol: '←', label: '左移' },
+                { dir: MOVE_DIRECTIONS.RIGHT, symbol: '→', label: '右移' }
+            ];
+
+            directions.forEach(({ dir, symbol, label }) => {
+                const moveInfo = isValidMove(faceIndex, dir);
+                if (moveInfo.valid) {
+                    const indicator = createMoveIndicator(faceIndex, dir, symbol, label, moveInfo.type);
+                    moveIndicators.push(indicator);
+                }
+            });
+        }
+
+        /**
+         * 创建移面指示器按钮
+         * @param {number} faceIndex - 面索引
+         * @param {string} direction - 方向
+         * @param {string} symbol - 符号
+         * @param {string} label - 标签
+         * @param {string} moveType - 移面类型
+         * @returns {HTMLElement} 指示器元素
+         */
+        function createMoveIndicator(faceIndex, direction, symbol, label, moveType) {
+            const element = faceElements[faceIndex];
+            if (!element) return null;
+
+            const indicator = document.createElement('button');
+            indicator.className = 'move-indicator';
+            indicator.innerHTML = symbol;
+            indicator.title = label + (moveType === 'parallel' ? ' (平行移面)' : ' (滚动移面)');
+            indicator.style.cssText = `
+                position: absolute;
+                width: 24px;
+                height: 24px;
+                border: none;
+                border-radius: 50%;
+                background: ${moveType === 'parallel' ? 'rgba(16, 185, 129, 0.9)' : 'rgba(59, 130, 246, 0.9)'};
+                color: white;
+                font-size: 14px;
+                font-weight: bold;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 50;
+                transition: transform 0.2s, background 0.2s;
+                box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+            `;
+
+            // 定位指示器
+            switch (direction) {
+                case MOVE_DIRECTIONS.UP:
+                    indicator.style.top = '-12px';
+                    indicator.style.left = '50%';
+                    indicator.style.transform = 'translateX(-50%)';
+                    break;
+                case MOVE_DIRECTIONS.DOWN:
+                    indicator.style.bottom = '-12px';
+                    indicator.style.left = '50%';
+                    indicator.style.transform = 'translateX(-50%)';
+                    break;
+                case MOVE_DIRECTIONS.LEFT:
+                    indicator.style.left = '-12px';
+                    indicator.style.top = '50%';
+                    indicator.style.transform = 'translateY(-50%)';
+                    break;
+                case MOVE_DIRECTIONS.RIGHT:
+                    indicator.style.right = '-12px';
+                    indicator.style.top = '50%';
+                    indicator.style.transform = 'translateY(-50%)';
+                    break;
+            }
+
+            // 悬停效果
+            indicator.addEventListener('mouseenter', () => {
+                indicator.style.transform = indicator.style.transform.replace('translate', 'scale(1.2) translate') + ' scale(1.2)';
+            });
+
+            indicator.addEventListener('mouseleave', () => {
+                indicator.style.transform = indicator.style.transform.replace('scale(1.2) ', '');
+            });
+
+            // 点击事件
+            indicator.addEventListener('click', (e) => {
+                e.stopPropagation();
+                executeMove(faceIndex, direction);
+            });
+
+            element.appendChild(indicator);
+            return indicator;
+        }
+
+        /**
+         * 移除所有移面指示器
+         */
+        function removeMoveIndicators() {
+            moveIndicators.forEach(indicator => {
+                if (indicator && indicator.parentNode) {
+                    indicator.parentNode.removeChild(indicator);
+                }
+            });
+            moveIndicators = [];
+        }
+
+        /**
+         * 更新所有面的移面指示器
+         */
+        function updateAllMoveIndicators() {
+            // 移除所有指示器
+            removeMoveIndicators();
+
+            // 确保面元素已初始化
+            if (!faceElements || faceElements.length === 0) return;
+
+            // 为当前选中的面添加指示器
+            addMoveIndicators(currentFaceIndex);
+        }
+
+        /**
+         * 保存移面历史状态
+         */
+        function saveMoveHistory() {
+            // 移除当前位置之后的历史记录
+            moveHistory = moveHistory.slice(0, moveHistoryIndex + 1);
+
+            // 添加新状态
+            const state = {
+                layout: JSON.parse(JSON.stringify(currentNetLayout.layout)),
+                faceData: JSON.parse(JSON.stringify(faceData))
+            };
+            moveHistory.push(state);
+
+            // 限制历史记录长度
+            if (moveHistory.length > MAX_MOVE_HISTORY) {
+                moveHistory.shift();
+            } else {
+                moveHistoryIndex++;
+            }
+        }
+
+        /**
+         * 撤销移面操作
+         */
+        function undoMove() {
+            if (moveHistoryIndex > 0) {
+                moveHistoryIndex--;
+                const state = moveHistory[moveHistoryIndex];
+                restoreMoveState(state);
+                showTooltip('已撤销移面', 1000);
+            } else {
+                showTooltip('没有可撤销的操作', 1000);
+            }
+        }
+
+        /**
+         * 重做移面操作
+         */
+        function redoMove() {
+            if (moveHistoryIndex < moveHistory.length - 1) {
+                moveHistoryIndex++;
+                const state = moveHistory[moveHistoryIndex];
+                restoreMoveState(state);
+                showTooltip('已重做移面', 1000);
+            } else {
+                showTooltip('没有可重做的操作', 1000);
+            }
+        }
+
+        /**
+         * 恢复移面状态
+         * @param {Object} state - 状态对象
+         */
+        function restoreMoveState(state) {
+            // 恢复布局
+            currentNetLayout.layout = JSON.parse(JSON.stringify(state.layout));
+
+            // 恢复面数据
+            faceData = JSON.parse(JSON.stringify(state.faceData));
+
+            // 重新渲染
+            renderNet();
+            updateAllTextures();
+
+            // 更新3D视图
+            if (isUnfolded) {
+                animateToNet();
+            }
+        }
+
+        /**
+         * 重置展开图到默认布局
+         */
+        function resetNet() {
+            const currentType = currentNetLayout ? currentNetLayout.type : '1-4-1';
+            const typeInfo = NET_TYPE_LIST.find(t => t.id === currentType);
+
+            if (typeInfo && typeInfo.variants.length > 0) {
+                currentNetLayout = JSON.parse(JSON.stringify(NET_STRUCTURES[typeInfo.variants[0]]));
+                renderNet();
+                showTooltip('已重置展开图', 1500);
+            }
+        }
+
+        /**
+         * 验证当前展开图结构是否有效
+         * @returns {boolean} 是否有效
+         */
+        function validateNetStructure() {
+            if (!currentNetLayout || !currentNetLayout.layout) return false;
+            return validateNetConnectivity(currentNetLayout.layout);
         }
 
         // 页面加载时初始化
