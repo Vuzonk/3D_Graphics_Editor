@@ -778,7 +778,571 @@
 
     <!-- JavaScript -->
     <script>
-        // JavaScript代码将在后续任务中添加
+        // ============================================
+        // 全局状态变量
+        // ============================================
+
+        // Three.js 相关
+        let scene, camera, renderer, controls;
+        let cubeGroup, faces3D = [];
+
+        // 视图状态
+        let isAutoRotating = false;
+        let isUnfolded = false;
+        let viewMode = '2d';
+        let currentFaceIndex = 0;
+        let currentTool = 'brush';
+        let brushColor = '#000000';
+        let brushSize = 5;
+        let patternRotation = 0;
+
+        // 面数据
+        const faceNames = ['前', '后', '右', '左', '上', '下'];
+        const faceIds = ['front', 'back', 'right', 'left', 'top', 'bottom'];
+        let faceData = [];
+
+        // Canvas纹理
+        let faceCanvases = [];
+        let faceTextures = [];
+        let faceContexts = [];
+
+        // 2D展开图状态
+        let netContainer = null;
+        let netCanvas = null;
+        let netCtx = null;
+        let faceElements = [];
+        let currentNetLayout = null;
+        let selectedFaceForEdit = null;
+
+        // 历史记录
+        let history = [];
+        let historyIndex = -1;
+        const MAX_HISTORY = 50;
+
+        // 面片默认颜色
+        const DEFAULT_FACE_COLORS = [
+            '#ef4444', // 红 - 前
+            '#3b82f6', // 蓝 - 后
+            '#22c55e', // 绿 - 右
+            '#eab308', // 黄 - 左
+            '#a855f7', // 紫 - 上
+            '#f97316'  // 橙 - 下
+        ];
+
+        // 相对面关系
+        const OPPOSITE_FACES = {
+            'front': 'back',
+            'back': 'front',
+            'left': 'right',
+            'right': 'left',
+            'top': 'bottom',
+            'bottom': 'top'
+        };
+
+        // 面的中文名称映射
+        const FACE_NAME_MAP = {
+            'front': '前面',
+            'back': '后面',
+            'left': '左面',
+            'right': '右面',
+            'top': '顶面',
+            'bottom': '底面'
+        };
+
+        // 相邻面关系
+        const ADJACENT_FACES = {
+            'front': ['top', 'bottom', 'left', 'right'],
+            'back': ['top', 'bottom', 'right', 'left'],
+            'left': ['top', 'bottom', 'front', 'back'],
+            'right': ['top', 'bottom', 'back', 'front'],
+            'top': ['back', 'front', 'left', 'right'],
+            'bottom': ['front', 'back', 'left', 'right']
+        };
+
+        // ============================================
+        // 11种展开图数据结构定义
+        // ============================================
+
+        const NET_STRUCTURES = {
+            // 1-4-1型 (6种变体)
+            '1-4-1-v1': {
+                name: '1-4-1型-变体1',
+                type: '1-4-1',
+                description: '顶部在上，底部在下，中间四面横向排列',
+                layout: [
+                    { faceId: 'top', gridX: 1, gridY: 0 },
+                    { faceId: 'left', gridX: 0, gridY: 1 },
+                    { faceId: 'front', gridX: 1, gridY: 1 },
+                    { faceId: 'right', gridX: 2, gridY: 1 },
+                    { faceId: 'back', gridX: 3, gridY: 1 },
+                    { faceId: 'bottom', gridX: 1, gridY: 2 }
+                ],
+                connections: [
+                    { from: 'top', to: 'front', edge: 'bottom' },
+                    { from: 'left', to: 'front', edge: 'left' },
+                    { from: 'right', to: 'front', edge: 'right' },
+                    { from: 'back', to: 'right', edge: 'right' },
+                    { from: 'bottom', to: 'front', edge: 'bottom' }
+                ],
+                gridSize: { cols: 4, rows: 3 }
+            },
+            '1-4-1-v2': {
+                name: '1-4-1型-变体2',
+                type: '1-4-1',
+                description: '顶部在下，底部在上，中间四面横向排列',
+                layout: [
+                    { faceId: 'bottom', gridX: 1, gridY: 0 },
+                    { faceId: 'left', gridX: 0, gridY: 1 },
+                    { faceId: 'front', gridX: 1, gridY: 1 },
+                    { faceId: 'right', gridX: 2, gridY: 1 },
+                    { faceId: 'back', gridX: 3, gridY: 1 },
+                    { faceId: 'top', gridX: 1, gridY: 2 }
+                ],
+                connections: [
+                    { from: 'bottom', to: 'front', edge: 'top' },
+                    { from: 'left', to: 'front', edge: 'left' },
+                    { from: 'right', to: 'front', edge: 'right' },
+                    { from: 'back', to: 'right', edge: 'right' },
+                    { from: 'top', to: 'front', edge: 'bottom' }
+                ],
+                gridSize: { cols: 4, rows: 3 }
+            },
+            '1-4-1-v3': {
+                name: '1-4-1型-变体3',
+                type: '1-4-1',
+                description: '顶部在左，底部在右，中间四面纵向排列',
+                layout: [
+                    { faceId: 'top', gridX: 0, gridY: 1 },
+                    { faceId: 'front', gridX: 1, gridY: 0 },
+                    { faceId: 'left', gridX: 1, gridY: 1 },
+                    { faceId: 'back', gridX: 1, gridY: 2 },
+                    { faceId: 'right', gridX: 1, gridY: 3 },
+                    { faceId: 'bottom', gridX: 2, gridY: 1 }
+                ],
+                connections: [
+                    { from: 'top', to: 'left', edge: 'right' },
+                    { from: 'front', to: 'left', edge: 'top' },
+                    { from: 'back', to: 'left', edge: 'bottom' },
+                    { from: 'right', to: 'left', edge: 'right' },
+                    { from: 'bottom', to: 'right', edge: 'right' }
+                ],
+                gridSize: { cols: 3, rows: 4 }
+            },
+            '1-4-1-v4': {
+                name: '1-4-1型-变体4',
+                type: '1-4-1',
+                description: '顶部在右，底部在左，中间四面纵向排列',
+                layout: [
+                    { faceId: 'bottom', gridX: 0, gridY: 1 },
+                    { faceId: 'front', gridX: 1, gridY: 0 },
+                    { faceId: 'left', gridX: 1, gridY: 1 },
+                    { faceId: 'back', gridX: 1, gridY: 2 },
+                    { faceId: 'right', gridX: 1, gridY: 3 },
+                    { faceId: 'top', gridX: 2, gridY: 1 }
+                ],
+                connections: [
+                    { from: 'bottom', to: 'left', edge: 'left' },
+                    { from: 'front', to: 'left', edge: 'top' },
+                    { from: 'back', to: 'left', edge: 'bottom' },
+                    { from: 'right', to: 'left', edge: 'right' },
+                    { from: 'top', to: 'right', edge: 'right' }
+                ],
+                gridSize: { cols: 3, rows: 4 }
+            },
+            '1-4-1-v5': {
+                name: '1-4-1型-变体5',
+                type: '1-4-1',
+                description: '前面为基准，顶部在上，底部在下，左右后方',
+                layout: [
+                    { faceId: 'top', gridX: 0, gridY: 0 },
+                    { faceId: 'left', gridX: 0, gridY: 1 },
+                    { faceId: 'front', gridX: 1, gridY: 1 },
+                    { faceId: 'right', gridX: 2, gridY: 1 },
+                    { faceId: 'back', gridX: 3, gridY: 1 },
+                    { faceId: 'bottom', gridX: 0, gridY: 2 }
+                ],
+                connections: [
+                    { from: 'top', to: 'left', edge: 'top' },
+                    { from: 'left', to: 'front', edge: 'right' },
+                    { from: 'front', to: 'right', edge: 'right' },
+                    { from: 'right', to: 'back', edge: 'right' },
+                    { from: 'bottom', to: 'left', edge: 'bottom' }
+                ],
+                gridSize: { cols: 4, rows: 3 }
+            },
+            '1-4-1-v6': {
+                name: '1-4-1型-变体6',
+                type: '1-4-1',
+                description: '前面为基准，底部在上，顶部在下，右左后方',
+                layout: [
+                    { faceId: 'bottom', gridX: 0, gridY: 0 },
+                    { faceId: 'right', gridX: 0, gridY: 1 },
+                    { faceId: 'front', gridX: 1, gridY: 1 },
+                    { faceId: 'left', gridX: 2, gridY: 1 },
+                    { faceId: 'back', gridX: 3, gridY: 1 },
+                    { faceId: 'top', gridX: 0, gridY: 2 }
+                ],
+                connections: [
+                    { from: 'bottom', to: 'right', edge: 'top' },
+                    { from: 'right', to: 'front', edge: 'right' },
+                    { from: 'front', to: 'left', edge: 'right' },
+                    { from: 'left', to: 'back', edge: 'right' },
+                    { from: 'top', to: 'right', edge: 'bottom' }
+                ],
+                gridSize: { cols: 4, rows: 3 }
+            },
+
+            // 2-3-1型 (3种变体)
+            '2-3-1-v1': {
+                name: '2-3-1型-变体1',
+                type: '2-3-1',
+                description: '上下两行，上行2面，下行3面，最后1面延伸',
+                layout: [
+                    { faceId: 'top', gridX: 0, gridY: 0 },
+                    { faceId: 'left', gridX: 1, gridY: 0 },
+                    { faceId: 'front', gridX: 0, gridY: 1 },
+                    { faceId: 'right', gridX: 1, gridY: 1 },
+                    { faceId: 'back', gridX: 2, gridY: 1 },
+                    { faceId: 'bottom', gridX: 3, gridY: 1 }
+                ],
+                connections: [
+                    { from: 'top', to: 'front', edge: 'bottom' },
+                    { from: 'left', to: 'top', edge: 'right' },
+                    { from: 'front', to: 'right', edge: 'right' },
+                    { from: 'right', to: 'back', edge: 'right' },
+                    { from: 'back', to: 'bottom', edge: 'right' }
+                ],
+                gridSize: { cols: 4, rows: 2 }
+            },
+            '2-3-1-v2': {
+                name: '2-3-1型-变体2',
+                type: '2-3-1',
+                description: 'T型结构，上3下2加延伸',
+                layout: [
+                    { faceId: 'back', gridX: 0, gridY: 0 },
+                    { faceId: 'top', gridX: 1, gridY: 0 },
+                    { faceId: 'front', gridX: 2, gridY: 0 },
+                    { faceId: 'left', gridX: 0, gridY: 1 },
+                    { faceId: 'bottom', gridX: 1, gridY: 1 },
+                    { faceId: 'right', gridX: 2, gridY: 1 }
+                ],
+                connections: [
+                    { from: 'back', to: 'left', edge: 'bottom' },
+                    { from: 'top', to: 'bottom', edge: 'bottom' },
+                    { from: 'front', to: 'right', edge: 'bottom' },
+                    { from: 'left', to: 'bottom', edge: 'right' },
+                    { from: 'bottom', to: 'right', edge: 'right' }
+                ],
+                gridSize: { cols: 3, rows: 2 }
+            },
+            '2-3-1-v3': {
+                name: '2-3-1型-变体3',
+                type: '2-3-1',
+                description: 'L型结构',
+                layout: [
+                    { faceId: 'left', gridX: 0, gridY: 0 },
+                    { faceId: 'top', gridX: 1, gridY: 0 },
+                    { faceId: 'back', gridX: 2, gridY: 0 },
+                    { faceId: 'front', gridX: 0, gridY: 1 },
+                    { faceId: 'right', gridX: 1, gridY: 1 },
+                    { faceId: 'bottom', gridX: 2, gridY: 1 }
+                ],
+                connections: [
+                    { from: 'left', to: 'front', edge: 'bottom' },
+                    { from: 'top', to: 'left', edge: 'right' },
+                    { from: 'top', to: 'right', edge: 'bottom' },
+                    { from: 'back', to: 'top', edge: 'right' },
+                    { from: 'back', to: 'bottom', edge: 'bottom' }
+                ],
+                gridSize: { cols: 3, rows: 2 }
+            },
+
+            // 3-3型
+            '3-3': {
+                name: '3-3型',
+                type: '3-3',
+                description: '两行各三面，阶梯排列',
+                layout: [
+                    { faceId: 'top', gridX: 0, gridY: 0 },
+                    { faceId: 'back', gridX: 1, gridY: 0 },
+                    { faceId: 'right', gridX: 2, gridY: 0 },
+                    { faceId: 'left', gridX: 0, gridY: 1 },
+                    { faceId: 'front', gridX: 1, gridY: 1 },
+                    { faceId: 'bottom', gridX: 2, gridY: 1 }
+                ],
+                connections: [
+                    { from: 'top', to: 'back', edge: 'right' },
+                    { from: 'back', to: 'right', edge: 'right' },
+                    { from: 'top', to: 'left', edge: 'bottom' },
+                    { from: 'back', to: 'front', edge: 'bottom' },
+                    { from: 'right', to: 'bottom', edge: 'bottom' },
+                    { from: 'left', to: 'front', edge: 'right' },
+                    { from: 'front', to: 'bottom', edge: 'right' }
+                ],
+                gridSize: { cols: 3, rows: 2 }
+            },
+
+            // 2-2-2型
+            '2-2-2': {
+                name: '2-2-2型',
+                type: '2-2-2',
+                description: '三行各两面，Z型排列',
+                layout: [
+                    { faceId: 'top', gridX: 0, gridY: 0 },
+                    { faceId: 'back', gridX: 1, gridY: 0 },
+                    { faceId: 'left', gridX: 0, gridY: 1 },
+                    { faceId: 'front', gridX: 1, gridY: 1 },
+                    { faceId: 'bottom', gridX: 0, gridY: 2 },
+                    { faceId: 'right', gridX: 1, gridY: 2 }
+                ],
+                connections: [
+                    { from: 'top', to: 'back', edge: 'right' },
+                    { from: 'top', to: 'left', edge: 'bottom' },
+                    { from: 'back', to: 'front', edge: 'bottom' },
+                    { from: 'left', to: 'bottom', edge: 'bottom' },
+                    { from: 'front', to: 'right', edge: 'bottom' },
+                    { from: 'bottom', to: 'right', edge: 'right' }
+                ],
+                gridSize: { cols: 2, rows: 3 }
+            }
+        };
+
+        // 展开图类型列表
+        const NET_TYPE_LIST = [
+            { id: '1-4-1', name: '1-4-1型', variants: ['1-4-1-v1', '1-4-1-v2', '1-4-1-v3', '1-4-1-v4', '1-4-1-v5', '1-4-1-v6'] },
+            { id: '2-3-1', name: '2-3-1型', variants: ['2-3-1-v1', '2-3-1-v2', '2-3-1-v3'] },
+            { id: '3-3', name: '3-3型', variants: ['3-3'] },
+            { id: '2-2-2', name: '2-2-2型', variants: ['2-2-2'] }
+        ];
+
+        // ============================================
+        // 初始化函数
+        // ============================================
+
+        /**
+         * 初始化面数据
+         * 每个面包含: id, name, pattern, rotation, color
+         */
+        function initFaceData() {
+            faceData = faceIds.map((id, index) => ({
+                id: id,
+                name: faceNames[index],
+                pattern: null,        // 当前图案
+                rotation: 0,          // 图案旋转角度
+                color: DEFAULT_FACE_COLORS[index],
+                elements: []          // 绘制的元素列表
+            }));
+        }
+
+        /**
+         * 初始化Canvas纹理
+         * 为每个面创建独立的Canvas用于绘制图案
+         */
+        function initCanvases() {
+            const size = 256; // 纹理大小
+
+            faceIds.forEach((id, index) => {
+                const canvas = document.createElement('canvas');
+                canvas.width = size;
+                canvas.height = size;
+                canvas.id = `canvas-${id}`;
+                const ctx = canvas.getContext('2d');
+
+                // 设置白色背景
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, size, size);
+
+                // 绘制边框
+                ctx.strokeStyle = '#cccccc';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(1, 1, size - 2, size - 2);
+
+                faceCanvases.push(canvas);
+                faceContexts.push(ctx);
+
+                // 创建Three.js纹理
+                const texture = new THREE.CanvasTexture(canvas);
+                texture.needsUpdate = true;
+                faceTextures.push(texture);
+            });
+        }
+
+        /**
+         * 主初始化函数
+         */
+        function init() {
+            console.log('初始化六面体展开图训练器...');
+
+            // 初始化数据
+            initFaceData();
+            initCanvases();
+
+            // 设置默认展开图
+            currentNetLayout = NET_STRUCTURES['1-4-1-v1'];
+
+            // 后续任务会实现这些函数
+            // init3DScene();
+            // init2DNet();
+            // setupEventListeners();
+
+            // 显示欢迎提示
+            showTooltip('欢迎使用六面体展开图训练器！', 2000);
+
+            console.log('初始化完成');
+        }
+
+        /**
+         * 显示提示信息
+         * @param {string} message - 提示信息
+         * @param {number} duration - 显示时长(毫秒)
+         */
+        function showTooltip(message, duration = 2000) {
+            const tooltip = document.getElementById('tooltip');
+            if (tooltip) {
+                tooltip.textContent = message;
+                tooltip.classList.add('visible');
+
+                // 定位到屏幕中央
+                tooltip.style.left = '50%';
+                tooltip.style.top = '80px';
+                tooltip.style.transform = 'translateX(-50%)';
+
+                setTimeout(() => {
+                    tooltip.classList.remove('visible');
+                }, duration);
+            }
+        }
+
+        /**
+         * 获取当前选中的面数据
+         * @returns {Object} 面数据对象
+         */
+        function getCurrentFaceData() {
+            const faceId = faceIds[currentFaceIndex];
+            return faceData.find(f => f.id === faceId);
+        }
+
+        /**
+         * 根据ID获取面数据
+         * @param {string} faceId - 面ID
+         * @returns {Object} 面数据对象
+         */
+        function getFaceDataById(faceId) {
+            return faceData.find(f => f.id === faceId);
+        }
+
+        /**
+         * 获取相对面
+         * @param {string} faceId - 面ID
+         * @returns {string} 相对面ID
+         */
+        function getOppositeFace(faceId) {
+            return OPPOSITE_FACES[faceId];
+        }
+
+        /**
+         * 获取相邻面列表
+         * @param {string} faceId - 面ID
+         * @returns {Array} 相邻面ID列表
+         */
+        function getAdjacentFaces(faceId) {
+            return ADJACENT_FACES[faceId];
+        }
+
+        /**
+         * 切换当前选中的面
+         * @param {string} faceId - 面ID
+         */
+        function selectFace(faceId) {
+            currentFaceIndex = faceIds.indexOf(faceId);
+            updateUI();
+        }
+
+        /**
+         * 更新UI显示
+         */
+        function updateUI() {
+            // 更新面选择器
+            document.querySelectorAll('.face-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.face === faceIds[currentFaceIndex]) {
+                    btn.classList.add('active');
+                }
+            });
+
+            // 更新展开图选中状态
+            document.querySelectorAll('.net-face').forEach(el => {
+                el.classList.remove('selected');
+                if (el.dataset.face === faceIds[currentFaceIndex]) {
+                    el.classList.add('selected');
+                }
+            });
+
+            // 更新信息显示
+            const currentFace = getCurrentFaceData();
+            if (currentFace) {
+                document.getElementById('selectedFaceLabel').textContent = FACE_NAME_MAP[currentFace.id];
+                document.getElementById('infoCurrentFace').textContent = FACE_NAME_MAP[currentFace.id];
+                document.getElementById('infoPattern').textContent = currentFace.pattern || '无';
+                document.getElementById('infoOpposite').textContent = FACE_NAME_MAP[getOppositeFace(currentFace.id)];
+                document.getElementById('infoAdjacent').textContent = getAdjacentFaces(currentFace.id)
+                    .map(f => FACE_NAME_MAP[f]).join('、');
+            }
+        }
+
+        /**
+         * 保存当前状态到历史记录
+         */
+        function saveToHistory() {
+            // 移除当前位置之后的历史记录
+            history = history.slice(0, historyIndex + 1);
+
+            // 添加新状态
+            const state = {
+                faceData: JSON.parse(JSON.stringify(faceData)),
+                currentFaceIndex: currentFaceIndex,
+                currentNetLayout: currentNetLayout ? currentNetLayout.name : null
+            };
+            history.push(state);
+
+            // 限制历史记录长度
+            if (history.length > MAX_HISTORY) {
+                history.shift();
+            } else {
+                historyIndex++;
+            }
+        }
+
+        /**
+         * 撤销操作
+         */
+        function undo() {
+            if (historyIndex > 0) {
+                historyIndex--;
+                const state = history[historyIndex];
+                faceData = JSON.parse(JSON.stringify(state.faceData));
+                currentFaceIndex = state.currentFaceIndex;
+                updateUI();
+                showTooltip('已撤销', 1000);
+            }
+        }
+
+        /**
+         * 重做操作
+         */
+        function redo() {
+            if (historyIndex < history.length - 1) {
+                historyIndex++;
+                const state = history[historyIndex];
+                faceData = JSON.parse(JSON.stringify(state.faceData));
+                currentFaceIndex = state.currentFaceIndex;
+                updateUI();
+                showTooltip('已重做', 1000);
+            }
+        }
+
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>
