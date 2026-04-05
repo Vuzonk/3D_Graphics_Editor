@@ -619,8 +619,25 @@
                 <div id="preview-container">
                     <!-- Three.js渲染容器 -->
                 </div>
+                <div class="flex gap-2 mt-3">
+                    <button id="foldBtn" class="tool-btn flex-1 justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            <line x1="12" y1="3" x2="12" y2="21"/>
+                            <line x1="3" y1="12" x2="21" y2="12"/>
+                        </svg>
+                        展开
+                    </button>
+                    <button id="viewModeBtn" class="tool-btn flex-1 justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                            <circle cx="12" cy="12" r="3"/>
+                        </svg>
+                        切换视角
+                    </button>
+                </div>
                 <div class="text-center text-xs text-gray-500 mt-2">
-                    拖动旋转 | 滚轮缩放
+                    拖动旋转 | 滚轮缩放 | 空格切换展开
                 </div>
             </section>
 
@@ -1704,10 +1721,18 @@
             const canvas = element.querySelector('.face-canvas');
             if (!canvas) return;
 
-            // 更新或创建Three.js纹理
+            // 更新Three.js纹理
             if (faceTextures[faceIndex]) {
                 faceTextures[faceIndex].image = canvas;
                 faceTextures[faceIndex].needsUpdate = true;
+            }
+
+            // 同时更新3D面的纹理
+            if (faces3D[faceIndex] && faces3D[faceIndex].material) {
+                const newTexture = new THREE.CanvasTexture(canvas);
+                newTexture.needsUpdate = true;
+                faces3D[faceIndex].material.map = newTexture;
+                faces3D[faceIndex].material.needsUpdate = true;
             }
 
             // 同时更新faceCanvases用于3D预览
@@ -1810,8 +1835,14 @@
             // 初始化2D展开图渲染系统
             init2DNet();
 
+            // 初始化3D场景
+            init3DScene();
+
             // 初始化历史记录
             saveToHistory();
+
+            // 绑定事件
+            bindEvents();
 
             // 更新UI
             updateUI();
@@ -1954,6 +1985,7 @@
                 faceData = JSON.parse(JSON.stringify(state.faceData));
                 currentFaceIndex = state.currentFaceIndex;
                 updateUI();
+                updateAllTextures();
                 showTooltip('已撤销', 1000);
             }
         }
@@ -1968,8 +2000,727 @@
                 faceData = JSON.parse(JSON.stringify(state.faceData));
                 currentFaceIndex = state.currentFaceIndex;
                 updateUI();
+                updateAllTextures();
                 showTooltip('已重做', 1000);
             }
+        }
+
+        // ============================================
+        // 3D场景渲染系统
+        // ============================================
+
+        /**
+         * 初始化3D场景
+         * 创建场景、相机、渲染器、光照和立方体
+         */
+        function init3DScene() {
+            const container = document.getElementById('preview-container');
+            if (!container) {
+                console.warn('未找到3D预览容器');
+                return;
+            }
+
+            // 获取容器尺寸
+            const width = container.clientWidth || 288;
+            const height = container.clientHeight || 300;
+
+            // 创建场景
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0f172a);
+
+            // 创建相机
+            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+            camera.position.set(4, 3, 5);
+            camera.lookAt(0, 0, 0);
+
+            // 创建渲染器
+            renderer = new THREE.WebGLRenderer({
+                antialias: true,
+                alpha: true
+            });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            // 创建控制器
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.enableZoom = true;
+            controls.enablePan = false;
+            controls.minDistance = 3;
+            controls.maxDistance = 15;
+
+            // 添加环境光
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambientLight);
+
+            // 添加主方向光
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(5, 10, 7);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+
+            // 添加补光
+            const fillLight = new THREE.DirectionalLight(0xffffff, 0.3);
+            fillLight.position.set(-5, 5, -5);
+            scene.add(fillLight);
+
+            // 创建立方体
+            createCube();
+
+            // 开始动画循环
+            animate();
+
+            // 监听窗口大小变化
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        /**
+         * 创建立方体
+         * 为每个面创建独立的平面几何体
+         */
+        function createCube() {
+            cubeGroup = new THREE.Group();
+            scene.add(cubeGroup);
+
+            faces3D = [];
+            faceTextures = [];
+
+            // 为每个面创建纹理和材质
+            for (let i = 0; i < 6; i++) {
+                // 从面片Canvas创建纹理
+                const element = faceElements[i];
+                let texture;
+                if (element) {
+                    const canvas = element.querySelector('.face-canvas');
+                    if (canvas) {
+                        texture = new THREE.CanvasTexture(canvas);
+                        texture.needsUpdate = true;
+                    }
+                }
+
+                if (!texture) {
+                    // 创建默认纹理
+                    const defaultCanvas = document.createElement('canvas');
+                    defaultCanvas.width = 256;
+                    defaultCanvas.height = 256;
+                    const ctx = defaultCanvas.getContext('2d');
+                    ctx.fillStyle = DEFAULT_FACE_COLORS[i];
+                    ctx.fillRect(0, 0, 256, 256);
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 4;
+                    ctx.strokeRect(2, 2, 252, 252);
+                    texture = new THREE.CanvasTexture(defaultCanvas);
+                }
+
+                faceTextures.push(texture);
+
+                // 创建材质
+                const material = new THREE.MeshStandardMaterial({
+                    map: texture,
+                    roughness: 0.3,
+                    metalness: 0.1,
+                    side: THREE.DoubleSide
+                });
+
+                // 创建平面几何体
+                const geometry = new THREE.PlaneGeometry(1.8, 1.8);
+                const mesh = new THREE.Mesh(geometry, material);
+
+                // 设置面的位置和旋转
+                setCubeFacePosition(mesh, i);
+
+                mesh.userData.faceIndex = i;
+                mesh.userData.faceId = faceIds[i];
+                faces3D.push(mesh);
+                cubeGroup.add(mesh);
+
+                // 添加边框
+                const edges = new THREE.EdgesGeometry(geometry);
+                const lineMaterial = new THREE.LineBasicMaterial({
+                    color: 0x000000,
+                    linewidth: 2
+                });
+                const line = new THREE.LineSegments(edges, lineMaterial);
+                mesh.add(line);
+            }
+
+            // 初始状态为折叠
+            isUnfolded = false;
+        }
+
+        /**
+         * 设置立方体面的位置和旋转
+         * @param {THREE.Mesh} mesh - 面网格
+         * @param {number} faceIndex - 面索引 (0:前, 1:后, 2:右, 3:左, 4:上, 5:下)
+         */
+        function setCubeFacePosition(mesh, faceIndex) {
+            const offset = 0.9; // 半边长
+
+            switch (faceIndex) {
+                case 0: // 前面 (z+)
+                    mesh.position.set(0, 0, offset);
+                    mesh.rotation.set(0, 0, 0);
+                    break;
+                case 1: // 后面 (z-)
+                    mesh.position.set(0, 0, -offset);
+                    mesh.rotation.set(0, Math.PI, 0);
+                    break;
+                case 2: // 右面 (x+)
+                    mesh.position.set(offset, 0, 0);
+                    mesh.rotation.set(0, Math.PI / 2, 0);
+                    break;
+                case 3: // 左面 (x-)
+                    mesh.position.set(-offset, 0, 0);
+                    mesh.rotation.set(0, -Math.PI / 2, 0);
+                    break;
+                case 4: // 上面 (y+)
+                    mesh.position.set(0, offset, 0);
+                    mesh.rotation.set(-Math.PI / 2, 0, 0);
+                    break;
+                case 5: // 下面 (y-)
+                    mesh.position.set(0, -offset, 0);
+                    mesh.rotation.set(Math.PI / 2, 0, 0);
+                    break;
+            }
+        }
+
+        /**
+         * 获取立方体状态下面的位置
+         * @param {number} faceIndex - 面索引
+         * @returns {Object} 位置对象 {x, y, z}
+         */
+        function getCubeFacePosition(faceIndex) {
+            const offset = 0.9;
+            const positions = [
+                { x: 0, y: 0, z: offset },      // 前
+                { x: 0, y: 0, z: -offset },     // 后
+                { x: offset, y: 0, z: 0 },      // 右
+                { x: -offset, y: 0, z: 0 },     // 左
+                { x: 0, y: offset, z: 0 },      // 上
+                { x: 0, y: -offset, z: 0 }      // 下
+            ];
+            return positions[faceIndex];
+        }
+
+        /**
+         * 获取立方体状态下面的旋转
+         * @param {number} faceIndex - 面索引
+         * @returns {Object} 旋转对象 {x, y, z}
+         */
+        function getCubeFaceRotation(faceIndex) {
+            const rotations = [
+                { x: 0, y: 0, z: 0 },                    // 前
+                { x: 0, y: Math.PI, z: 0 },              // 后
+                { x: 0, y: Math.PI / 2, z: 0 },          // 右
+                { x: 0, y: -Math.PI / 2, z: 0 },         // 左
+                { x: -Math.PI / 2, y: 0, z: 0 },         // 上
+                { x: Math.PI / 2, y: 0, z: 0 }           // 下
+            ];
+            return rotations[faceIndex];
+        }
+
+        /**
+         * 获取展开状态下面的位置
+         * 根据当前展开图布局计算
+         * @param {number} faceIndex - 面索引
+         * @returns {Object} 位置对象 {x, y, z}
+         */
+        function getUnfoldedFacePosition(faceIndex) {
+            if (!currentNetLayout) {
+                return { x: 0, y: 0, z: 0 };
+            }
+
+            const faceId = faceIds[faceIndex];
+            const layoutItem = currentNetLayout.layout.find(item => item.faceId === faceId);
+
+            if (!layoutItem) {
+                return { x: 0, y: 0, z: 0 };
+            }
+
+            // 计算布局边界
+            const layout = currentNetLayout.layout;
+            let minX = Infinity, maxX = -Infinity;
+            let minY = Infinity, maxY = -Infinity;
+
+            layout.forEach(item => {
+                minX = Math.min(minX, item.gridX);
+                maxX = Math.max(maxX, item.gridX);
+                minY = Math.min(minY, item.gridY);
+                maxY = Math.max(maxY, item.gridY);
+            });
+
+            // 计算中心偏移
+            const centerX = (minX + maxX) / 2;
+            const centerY = (minY + maxY) / 2;
+
+            // 计算位置 (每个网格单元2个单位)
+            const spacing = 2.0;
+            const x = (layoutItem.gridX - centerX) * spacing;
+            const z = (layoutItem.gridY - centerY) * spacing;
+
+            return { x: x, y: 0, z: z };
+        }
+
+        /**
+         * 获取展开状态下面的旋转
+         * 所有面朝上
+         * @returns {Object} 旋转对象 {x, y, z}
+         */
+        function getUnfoldedFaceRotation() {
+            return { x: -Math.PI / 2, y: 0, z: 0 };
+        }
+
+        /**
+         * 切换展开/折叠状态
+         */
+        function toggleFold() {
+            isUnfolded = !isUnfolded;
+
+            // 更新按钮文本
+            const foldBtn = document.getElementById('foldBtn');
+            if (foldBtn) {
+                foldBtn.textContent = isUnfolded ? '折叠' : '展开';
+            }
+
+            if (isUnfolded) {
+                animateToNet();
+            } else {
+                animateToCube();
+            }
+        }
+
+        /**
+         * 动画过渡到展开状态
+         */
+        function animateToNet() {
+            if (!faces3D || faces3D.length === 0) return;
+
+            faces3D.forEach((mesh, index) => {
+                const targetPos = getUnfoldedFacePosition(index);
+                const targetRot = getUnfoldedFaceRotation();
+
+                // 使用GSAP动画
+                gsap.to(mesh.position, {
+                    x: targetPos.x,
+                    y: targetPos.y,
+                    z: targetPos.z,
+                    duration: 1.0,
+                    ease: 'power2.inOut'
+                });
+
+                gsap.to(mesh.rotation, {
+                    x: targetRot.x,
+                    y: targetRot.y,
+                    z: targetRot.z,
+                    duration: 1.0,
+                    ease: 'power2.inOut'
+                });
+            });
+
+            showTooltip('已展开为平面图', 1500);
+        }
+
+        /**
+         * 动画过渡到立方体状态
+         */
+        function animateToCube() {
+            if (!faces3D || faces3D.length === 0) return;
+
+            faces3D.forEach((mesh, index) => {
+                const targetPos = getCubeFacePosition(index);
+                const targetRot = getCubeFaceRotation(index);
+
+                // 使用GSAP动画
+                gsap.to(mesh.position, {
+                    x: targetPos.x,
+                    y: targetPos.y,
+                    z: targetPos.z,
+                    duration: 1.0,
+                    ease: 'power2.inOut'
+                });
+
+                gsap.to(mesh.rotation, {
+                    x: targetRot.x,
+                    y: targetRot.y,
+                    z: targetRot.z,
+                    duration: 1.0,
+                    ease: 'power2.inOut'
+                });
+            });
+
+            showTooltip('已折叠为立方体', 1500);
+        }
+
+        /**
+         * 更新所有3D面的纹理
+         */
+        function update3DFacesTextures() {
+            faces3D.forEach((mesh, index) => {
+                const element = faceElements[index];
+                if (element) {
+                    const canvas = element.querySelector('.face-canvas');
+                    if (canvas && mesh.material.map) {
+                        mesh.material.map.image = canvas;
+                        mesh.material.map.needsUpdate = true;
+                    }
+                }
+            });
+        }
+
+        /**
+         * 切换自动旋转
+         */
+        function toggleAutoRotate() {
+            isAutoRotating = !isAutoRotating;
+
+            const btn = document.getElementById('autoRotateBtn');
+            if (btn) {
+                if (isAutoRotating) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            }
+
+            showTooltip(isAutoRotating ? '自动旋转已开启' : '自动旋转已关闭', 1500);
+        }
+
+        /**
+         * 重置视角
+         */
+        function resetView() {
+            if (!camera || !controls) return;
+
+            // 动画过渡到初始视角
+            gsap.to(camera.position, {
+                x: 4,
+                y: 3,
+                z: 5,
+                duration: 0.8,
+                ease: 'power2.inOut',
+                onUpdate: () => {
+                    camera.lookAt(0, 0, 0);
+                }
+            });
+
+            controls.reset();
+            showTooltip('视角已重置', 1500);
+        }
+
+        /**
+         * 设置视图模式
+         * @param {string} mode - '2d' 或 '3d'
+         */
+        function setViewMode(mode) {
+            viewMode = mode;
+
+            if (mode === '2d') {
+                // 切换到2D视图 (展开状态)
+                if (!isUnfolded) {
+                    toggleFold();
+                }
+                // 调整相机位置为俯视
+                gsap.to(camera.position, {
+                    x: 0,
+                    y: 8,
+                    z: 0,
+                    duration: 0.8,
+                    ease: 'power2.inOut'
+                });
+            } else {
+                // 切换到3D视图
+                if (isUnfolded) {
+                    toggleFold();
+                }
+                resetView();
+            }
+        }
+
+        /**
+         * 响应窗口大小变化
+         */
+        function onWindowResize() {
+            const container = document.getElementById('preview-container');
+            if (!container || !camera || !renderer) return;
+
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        }
+
+        /**
+         * 动画循环
+         */
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // 更新控制器
+            if (controls) {
+                controls.update();
+            }
+
+            // 自动旋转
+            if (isAutoRotating && cubeGroup) {
+                cubeGroup.rotation.y += 0.005;
+            }
+
+            // 渲染场景
+            if (renderer && scene && camera) {
+                renderer.render(scene, camera);
+            }
+        }
+
+        // ============================================
+        // 事件绑定
+        // ============================================
+
+        /**
+         * 绑定所有事件监听器
+         */
+        function bindEvents() {
+            // 返回按钮
+            const backBtn = document.getElementById('backBtn');
+            if (backBtn) {
+                backBtn.addEventListener('click', () => {
+                    if (confirm('确定要返回主页吗？')) {
+                        window.location.href = 'index.html';
+                    }
+                });
+            }
+
+            // 自动旋转按钮
+            const autoRotateBtn = document.getElementById('autoRotateBtn');
+            if (autoRotateBtn) {
+                autoRotateBtn.addEventListener('click', toggleAutoRotate);
+            }
+
+            // 重置视角按钮
+            const resetViewBtn = document.getElementById('resetViewBtn');
+            if (resetViewBtn) {
+                resetViewBtn.addEventListener('click', resetView);
+            }
+
+            // 展开/折叠按钮
+            const foldBtn = document.getElementById('foldBtn');
+            if (foldBtn) {
+                foldBtn.addEventListener('click', toggleFold);
+            }
+
+            // 切换视角按钮
+            const viewModeBtn = document.getElementById('viewModeBtn');
+            if (viewModeBtn) {
+                viewModeBtn.addEventListener('click', () => {
+                    if (viewMode === '2d') {
+                        viewMode = '3d';
+                    } else {
+                        viewMode = '2d';
+                    }
+                    setViewMode(viewMode);
+                });
+            }
+
+            // 展开图类型选择器
+            document.querySelectorAll('.selector-btn[data-type]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    // 移除其他按钮的active类
+                    document.querySelectorAll('.selector-btn[data-type]').forEach(b => {
+                        b.classList.remove('active');
+                    });
+                    // 添加当前按钮的active类
+                    e.target.classList.add('active');
+
+                    // 切换展开图类型
+                    const type = e.target.dataset.type;
+                    switchNetType(type);
+                });
+            });
+
+            // 面选择器
+            document.querySelectorAll('.face-btn[data-face]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const faceId = e.target.dataset.face;
+                    selectFace(faceId);
+
+                    // 更新展开图选中状态
+                    faceElements.forEach(el => {
+                        el.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+                        el.style.boxShadow = 'none';
+                    });
+                    const index = faceIds.indexOf(faceId);
+                    if (faceElements[index]) {
+                        faceElements[index].style.borderColor = '#3b82f6';
+                        faceElements[index].style.boxShadow = '0 0 10px rgba(59, 130, 246, 0.5)';
+                    }
+                });
+            });
+
+            // 图案按钮
+            document.querySelectorAll('.pattern-btn[data-pattern]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const pattern = e.currentTarget.dataset.pattern;
+                    setPatternToCurrentFace(pattern);
+
+                    // 更新图案按钮状态
+                    document.querySelectorAll('.pattern-btn').forEach(b => {
+                        b.classList.remove('active');
+                    });
+                    e.currentTarget.classList.add('active');
+                });
+            });
+
+            // 清除当前面按钮
+            const clearFaceBtn = document.getElementById('clearFaceBtn');
+            if (clearFaceBtn) {
+                clearFaceBtn.addEventListener('click', clearCurrentFace);
+            }
+
+            // 清除所有面按钮
+            const clearAllBtn = document.getElementById('clearAllBtn');
+            if (clearAllBtn) {
+                clearAllBtn.addEventListener('click', clearAllFaces);
+            }
+
+            // 随机生成按钮
+            const randomBtn = document.getElementById('randomBtn');
+            if (randomBtn) {
+                randomBtn.addEventListener('click', randomizePatterns);
+            }
+
+            // 移面操作按钮
+            const rotateLeftBtn = document.getElementById('rotateLeftBtn');
+            if (rotateLeftBtn) {
+                rotateLeftBtn.addEventListener('click', () => rotateNet('left'));
+            }
+
+            const rotateRightBtn = document.getElementById('rotateRightBtn');
+            if (rotateRightBtn) {
+                rotateRightBtn.addEventListener('click', () => rotateNet('right'));
+            }
+
+            const flipHBtn = document.getElementById('flipHBtn');
+            if (flipHBtn) {
+                flipHBtn.addEventListener('click', () => flipNet('horizontal'));
+            }
+
+            const flipVBtn = document.getElementById('flipVBtn');
+            if (flipVBtn) {
+                flipVBtn.addEventListener('click', () => flipNet('vertical'));
+            }
+
+            // 键盘快捷键
+            document.addEventListener('keydown', (e) => {
+                // 数字键切换展开图类型
+                if (e.key === '1') {
+                    switchNetType('1-4-1');
+                } else if (e.key === '2') {
+                    switchNetType('2-3-1');
+                } else if (e.key === '3') {
+                    switchNetType('3-3');
+                } else if (e.key === '4') {
+                    switchNetType('2-2-2');
+                }
+
+                // Delete键清除当前面
+                if (e.key === 'Delete' || e.key === 'Backspace') {
+                    clearCurrentFace();
+                }
+
+                // Ctrl+Z 撤销
+                if (e.ctrlKey && e.key === 'z') {
+                    e.preventDefault();
+                    undo();
+                }
+
+                // Ctrl+Y 重做
+                if (e.ctrlKey && e.key === 'y') {
+                    e.preventDefault();
+                    redo();
+                }
+
+                // 空格键切换展开/折叠
+                if (e.key === ' ' && !e.target.matches('input, textarea')) {
+                    e.preventDefault();
+                    toggleFold();
+                }
+            });
+        }
+
+        /**
+         * 切换展开图类型
+         * @param {string} type - 展开图类型
+         */
+        function switchNetType(type) {
+            // 获取该类型的第一个变体
+            const typeInfo = NET_TYPE_LIST.find(t => t.id === type);
+            if (typeInfo && typeInfo.variants.length > 0) {
+                currentNetLayout = NET_STRUCTURES[typeInfo.variants[0]];
+                renderNet();
+
+                // 更新按钮状态
+                document.querySelectorAll('.selector-btn[data-type]').forEach(btn => {
+                    btn.classList.remove('active');
+                    if (btn.dataset.type === type) {
+                        btn.classList.add('active');
+                    }
+                });
+
+                showTooltip(`已切换到${typeInfo.name}`, 1500);
+            }
+        }
+
+        /**
+         * 旋转展开图
+         * @param {string} direction - 'left' 或 'right'
+         */
+        function rotateNet(direction) {
+            saveToHistory();
+
+            // 旋转每个面的图案
+            faceData.forEach(face => {
+                if (face.pattern) {
+                    if (direction === 'left') {
+                        face.rotation = (face.rotation - 90 + 360) % 360;
+                    } else {
+                        face.rotation = (face.rotation + 90) % 360;
+                    }
+                }
+            });
+
+            updateAllTextures();
+            showTooltip(direction === 'left' ? '已向左旋转' : '已向右旋转', 1500);
+        }
+
+        /**
+         * 翻转展开图
+         * @param {string} direction - 'horizontal' 或 'vertical'
+         */
+        function flipNet(direction) {
+            saveToHistory();
+
+            // 翻转图案方向
+            faceData.forEach(face => {
+                if (face.pattern) {
+                    if (face.pattern.includes('arrow-left')) {
+                        face.pattern = 'arrow-right';
+                    } else if (face.pattern.includes('arrow-right')) {
+                        face.pattern = 'arrow-left';
+                    } else if (face.pattern.includes('arrow-up')) {
+                        face.pattern = 'arrow-down';
+                    } else if (face.pattern.includes('arrow-down')) {
+                        face.pattern = 'arrow-up';
+                    }
+                }
+            });
+
+            updateAllTextures();
+            showTooltip(direction === 'horizontal' ? '已水平翻转' : '已垂直翻转', 1500);
         }
 
         // 页面加载时初始化
