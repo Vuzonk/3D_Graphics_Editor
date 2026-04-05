@@ -3985,6 +3985,14 @@ class Shape3DViewer {
             });
         }
 
+        // 六面体展开图编辑器事件监听器
+        const openCubeNetEditorBtn = document.getElementById('openCubeNetEditor');
+        if (openCubeNetEditorBtn) {
+            openCubeNetEditorBtn.addEventListener('click', () => {
+                window.open('hexahedron.html', '_blank');
+            });
+        }
+
         const anchorInfluenceRadiusSlider = document.getElementById('anchorInfluenceRadius');
         const anchorInfluenceRadiusValue = document.getElementById('anchorInfluenceRadiusValue');
         if (anchorInfluenceRadiusSlider && anchorInfluenceRadiusValue) {
