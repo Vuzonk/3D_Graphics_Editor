@@ -320,6 +320,65 @@
             line-height: 1.5;
         }
 
+        /* 颜色按钮 */
+        .color-btn {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .color-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .color-btn.active {
+            border-color: #3b82f6;
+            box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
+        }
+
+        /* 滑动条样式 */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-runnable-track {
+            background: rgba(255, 255, 255, 0.1);
+            height: 6px;
+            border-radius: 3px;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            margin-top: -4px;
+            background-color: #3b82f6;
+            height: 14px;
+            width: 14px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-moz-range-track {
+            background: rgba(255, 255, 255, 0.1);
+            height: 6px;
+            border-radius: 3px;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            background-color: #3b82f6;
+            height: 14px;
+            width: 14px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+        }
+
         /* 动画 */
         @keyframes pulse {
             0%, 100% { opacity: 1; }
@@ -457,6 +516,57 @@
                     </svg>
                     绘图工具
                 </h3>
+
+                <!-- 工具选择 -->
+                <div class="grid grid-cols-2 gap-2 mb-3">
+                    <button class="tool-btn justify-center active" data-tool="brush" title="画笔">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 19l7-7 3 3-7 7-3-3z"/>
+                            <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>
+                        </svg>
+                        画笔
+                    </button>
+                    <button class="tool-btn justify-center" data-tool="eraser" title="橡皮擦">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 20H7L3 16c-.6-.6-.6-1.5 0-2.1l10-10c.6-.6 1.5-.6 2.1 0l6.9 6.9c.6.6.6 1.5 0 2.1L14 21"/>
+                        </svg>
+                        橡皮
+                    </button>
+                </div>
+
+                <!-- 画笔大小 -->
+                <div class="mb-3">
+                    <label class="text-xs text-gray-400 mb-1 block">画笔大小: <span id="brushSizeLabel">5</span>px</label>
+                    <input type="range" id="brushSize" min="1" max="30" value="5" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                </div>
+
+                <!-- 颜色选择 -->
+                <div class="mb-3">
+                    <label class="text-xs text-gray-400 mb-1 block">画笔颜色</label>
+                    <div class="grid grid-cols-6 gap-1">
+                        <button class="w-6 h-6 rounded border border-white/20 active" data-color="#000000" style="background: #000000;" title="黑色"></button>
+                        <button class="w-6 h-6 rounded border border-white/20" data-color="#ffffff" style="background: #ffffff;" title="白色"></button>
+                        <button class="w-6 h-6 rounded border border-white/20" data-color="#ef4444" style="background: #ef4444;" title="红色"></button>
+                        <button class="w-6 h-6 rounded border border-white/20" data-color="#3b82f6" style="background: #3b82f6;" title="蓝色"></button>
+                        <button class="w-6 h-6 rounded border border-white/20" data-color="#22c55e" style="background: #22c55e;" title="绿色"></button>
+                        <button class="w-6 h-6 rounded border border-white/20" data-color="#eab308" style="background: #eab308;" title="黄色"></button>
+                    </div>
+                </div>
+
+                <!-- 面颜色选择 -->
+                <div class="mb-3">
+                    <label class="text-xs text-gray-400 mb-1 block">面背景色</label>
+                    <div class="grid grid-cols-6 gap-1">
+                        <button class="w-6 h-6 rounded border border-white/20" data-face-color="#ef4444" style="background: #ef4444;" title="红色"></button>
+                        <button class="w-6 h-6 rounded border border-white/20" data-face-color="#3b82f6" style="background: #3b82f6;" title="蓝色"></button>
+                        <button class="w-6 h-6 rounded border border-white/20" data-face-color="#22c55e" style="background: #22c55e;" title="绿色"></button>
+                        <button class="w-6 h-6 rounded border border-white/20" data-face-color="#eab308" style="background: #eab308;" title="黄色"></button>
+                        <button class="w-6 h-6 rounded border border-white/20" data-face-color="#a855f7" style="background: #a855f7;" title="紫色"></button>
+                        <button class="w-6 h-6 rounded border border-white/20" data-face-color="#f97316" style="background: #f97316;" title="橙色"></button>
+                    </div>
+                </div>
+
+                <!-- 操作按钮 -->
                 <div class="grid grid-cols-3 gap-2">
                     <button class="tool-btn justify-center" id="clearFaceBtn" title="清除当前面">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -771,6 +881,11 @@
         let faceCanvases = [];
         let faceTextures = [];
         let faceContexts = [];
+
+        // 手绘状态变量
+        let isDrawing = false;
+        let lastDrawPoint = null;
+        let drawingFaceIndex = null;
 
         // 2D展开图状态
         let netContainer = null;
@@ -1305,7 +1420,7 @@
             // 绘制网格背景
             drawNetGrid(startX, startY, maxX - minX + 1, maxY - minY + 1);
 
-            // 定位面片元素
+            // 定位面片元素并初始化绘图功能
             layout.forEach(item => {
                 const faceIndex = faceIds.indexOf(item.faceId);
                 if (faceIndex === -1) return;
@@ -1322,6 +1437,11 @@
 
                 // 渲染面内容
                 renderFaceContent(faceIndex);
+
+                // 初始化绘图功能（如果尚未初始化）
+                if (!element.drawCanvas) {
+                    setupFaceDrawing(faceIndex);
+                }
             });
 
             // 隐藏不在布局中的面片
@@ -1918,6 +2038,524 @@
         function selectFace(faceId) {
             currentFaceIndex = faceIds.indexOf(faceId);
             updateUI();
+        }
+
+        /**
+         * 设置面片绘图功能
+         * @param {number} faceIndex - 面索引
+         */
+        function setupFaceDrawing(faceIndex) {
+            const el = faceElements[faceIndex];
+            if (!el || el.drawCanvas) return; // 已经初始化过
+
+            // 获取主绘图Canvas
+            const mainCanvas = el.querySelector('.face-canvas');
+            if (!mainCanvas) return;
+
+            // 创建专用绘图层Canvas
+            const drawCanvas = document.createElement('canvas');
+            drawCanvas.className = 'draw-canvas';
+            drawCanvas.width = FACE_SIZE;
+            drawCanvas.height = FACE_SIZE;
+            drawCanvas.style.position = 'absolute';
+            drawCanvas.style.top = '0';
+            drawCanvas.style.left = '0';
+            drawCanvas.style.width = '100%';
+            drawCanvas.style.height = '100%';
+            drawCanvas.style.cursor = 'crosshair';
+            drawCanvas.style.zIndex = '5';
+            el.appendChild(drawCanvas);
+
+            // 存储引用
+            el.drawCanvas = drawCanvas;
+            el.drawCtx = drawCanvas.getContext('2d');
+            el.mainCanvas = mainCanvas;
+            el.mainCtx = mainCanvas.getContext('2d');
+
+            // 绑定鼠标事件
+            drawCanvas.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                startDrawing(e, faceIndex);
+            });
+
+            drawCanvas.addEventListener('mousemove', (e) => {
+                e.preventDefault();
+                if (isDrawing && drawingFaceIndex === faceIndex) {
+                    continueDrawing(e, faceIndex);
+                }
+            });
+
+            drawCanvas.addEventListener('mouseup', (e) => {
+                e.preventDefault();
+                if (isDrawing && drawingFaceIndex === faceIndex) {
+                    finishDrawing(faceIndex);
+                }
+            });
+
+            drawCanvas.addEventListener('mouseleave', (e) => {
+                if (isDrawing && drawingFaceIndex === faceIndex) {
+                    finishDrawing(faceIndex);
+                }
+            });
+
+            // 绑定触摸事件
+            drawCanvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const touch = e.touches[0];
+                const rect = drawCanvas.getBoundingClientRect();
+                const mockEvent = {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY,
+                    target: drawCanvas
+                };
+                startDrawing(mockEvent, faceIndex);
+            }, { passive: false });
+
+            drawCanvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                if (isDrawing && drawingFaceIndex === faceIndex) {
+                    const touch = e.touches[0];
+                    const mockEvent = {
+                        clientX: touch.clientX,
+                        clientY: touch.clientY,
+                        target: drawCanvas
+                    };
+                    continueDrawing(mockEvent, faceIndex);
+                }
+            }, { passive: false });
+
+            drawCanvas.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                if (isDrawing && drawingFaceIndex === faceIndex) {
+                    finishDrawing(faceIndex);
+                }
+            }, { passive: false });
+
+            // 点击时选择当前面
+            drawCanvas.addEventListener('click', (e) => {
+                e.stopPropagation();
+                selectFace(faceIds[faceIndex]);
+                // 更新选中样式
+                faceElements.forEach(faceEl => {
+                    faceEl.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+                    faceEl.style.boxShadow = 'none';
+                });
+                el.style.borderColor = '#3b82f6';
+                el.style.boxShadow = '0 0 10px rgba(59, 130, 246, 0.5)';
+            });
+        }
+
+        /**
+         * 开始绘制
+         * @param {Event} e - 事件对象
+         * @param {number} faceIndex - 面索引
+         */
+        function startDrawing(e, faceIndex) {
+            isDrawing = true;
+            drawingFaceIndex = faceIndex;
+            lastDrawPoint = getCanvasPoint(e, faceElements[faceIndex].drawCanvas);
+
+            // 绘制起始点
+            const el = faceElements[faceIndex];
+            const ctx = el.drawCtx;
+
+            if (currentTool === 'eraser') {
+                eraseAt(el.mainCtx, lastDrawPoint.x, lastDrawPoint.y, brushSize * 2);
+            } else {
+                drawDotAt(ctx, lastDrawPoint.x, lastDrawPoint.y, brushColor, brushSize);
+            }
+
+            // 选择当前面
+            selectFace(faceIds[faceIndex]);
+        }
+
+        /**
+         * 继续绘制
+         * @param {Event} e - 事件对象
+         * @param {number} faceIndex - 面索引
+         */
+        function continueDrawing(e, faceIndex) {
+            const el = faceElements[faceIndex];
+            const currentPoint = getCanvasPoint(e, el.drawCanvas);
+            const ctx = el.drawCtx;
+
+            if (currentTool === 'eraser') {
+                eraseAt(el.mainCtx, currentPoint.x, currentPoint.y, brushSize * 2);
+            } else {
+                if (lastDrawPoint) {
+                    drawLine(ctx, lastDrawPoint, currentPoint, brushColor, brushSize);
+                }
+            }
+
+            lastDrawPoint = currentPoint;
+        }
+
+        /**
+         * 完成绘制
+         * @param {number} faceIndex - 面索引
+         */
+        function finishDrawing(faceIndex) {
+            if (!isDrawing) return;
+
+            const el = faceElements[faceIndex];
+            if (!el || !el.drawCanvas) {
+                isDrawing = false;
+                lastDrawPoint = null;
+                drawingFaceIndex = null;
+                return;
+            }
+
+            // 合并绘图层到主Canvas
+            commitDrawing(faceIndex);
+
+            // 重置状态
+            isDrawing = false;
+            lastDrawPoint = null;
+            drawingFaceIndex = null;
+        }
+
+        /**
+         * 获取Canvas上的坐标点
+         * @param {Event} e - 事件对象
+         * @param {HTMLCanvasElement} canvas - Canvas元素
+         * @returns {Object} 坐标对象 {x, y}
+         */
+        function getCanvasPoint(e, canvas) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            return {
+                x: (e.clientX - rect.left) * scaleX,
+                y: (e.clientY - rect.top) * scaleY
+            };
+        }
+
+        /**
+         * 绘制单点
+         * @param {CanvasRenderingContext2D} ctx - Canvas上下文
+         * @param {number} x - X坐标
+         * @param {number} y - Y坐标
+         * @param {string} color - 颜色
+         * @param {number} size - 大小
+         */
+        function drawDotAt(ctx, x, y, color, size) {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(x, y, size / 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        /**
+         * 绘制线条
+         * @param {CanvasRenderingContext2D} ctx - Canvas上下文
+         * @param {Object} from - 起点 {x, y}
+         * @param {Object} to - 终点 {x, y}
+         * @param {string} color - 颜色
+         * @param {number} size - 大小
+         */
+        function drawLine(ctx, from, to, color, size) {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = size;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.beginPath();
+            ctx.moveTo(from.x, from.y);
+            ctx.lineTo(to.x, to.y);
+            ctx.stroke();
+        }
+
+        /**
+         * 橡皮擦功能
+         * @param {CanvasRenderingContext2D} ctx - Canvas上下文
+         * @param {number} x - X坐标
+         * @param {number} y - Y坐标
+         * @param {number} size - 橡皮擦大小
+         */
+        function eraseAt(ctx, x, y, size) {
+            ctx.save();
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.beginPath();
+            ctx.arc(x, y, size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            // 更新纹理
+            const faceIndex = faceContexts.indexOf(ctx);
+            if (faceIndex >= 0 && faceTextures[faceIndex]) {
+                faceTextures[faceIndex].needsUpdate = true;
+            }
+        }
+
+        /**
+         * 将绘图层合并到主Canvas
+         * @param {number} faceIndex - 面索引
+         */
+        function commitDrawing(faceIndex) {
+            const el = faceElements[faceIndex];
+            if (!el || !el.drawCanvas || !el.mainCanvas) return;
+
+            const mainCtx = el.mainCtx;
+            const drawCanvas = el.drawCanvas;
+
+            // 将绘图层绘制到主Canvas
+            mainCtx.drawImage(drawCanvas, 0, 0);
+
+            // 清空绘图层
+            const drawCtx = el.drawCtx;
+            drawCtx.clearRect(0, 0, FACE_SIZE, FACE_SIZE);
+
+            // 保存历史记录
+            saveToHistory();
+
+            // 更新3D纹理
+            updateFaceTextureFromCanvas(faceIndex, el.mainCanvas);
+
+            // 更新面信息显示
+            updateFacePreview(faceIndex);
+        }
+
+        /**
+         * 从Canvas更新面纹理
+         * @param {number} faceIndex - 面索引
+         * @param {HTMLCanvasElement} sourceCanvas - 源Canvas
+         */
+        function updateFaceTextureFromCanvas(faceIndex, sourceCanvas) {
+            // 更新大纹理Canvas
+            if (faceCanvases[faceIndex]) {
+                const ctx = faceContexts[faceIndex];
+                ctx.clearRect(0, 0, 256, 256);
+                ctx.drawImage(sourceCanvas, 0, 0, 256, 256);
+            }
+
+            // 更新Three.js纹理
+            if (faceTextures[faceIndex]) {
+                faceTextures[faceIndex].image = sourceCanvas;
+                faceTextures[faceIndex].needsUpdate = true;
+            }
+
+            // 更新3D面的纹理
+            if (faces3D[faceIndex] && faces3D[faceIndex].material) {
+                const newTexture = new THREE.CanvasTexture(sourceCanvas);
+                newTexture.needsUpdate = true;
+                faces3D[faceIndex].material.map = newTexture;
+                faces3D[faceIndex].material.needsUpdate = true;
+            }
+        }
+
+        /**
+         * 设置当前工具
+         * @param {string} tool - 'brush' 或 'eraser'
+         */
+        function setTool(tool) {
+            currentTool = tool;
+
+            // 更新光标样式
+            faceElements.forEach(el => {
+                if (el.drawCanvas) {
+                    el.drawCanvas.style.cursor = tool === 'eraser' ? 'cell' : 'crosshair';
+                }
+            });
+
+            // 更新UI状态
+            document.querySelectorAll('[data-tool]').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.tool === tool) {
+                    btn.classList.add('active');
+                }
+            });
+
+            showTooltip(tool === 'eraser' ? '已选择橡皮擦' : '已选择画笔', 1000);
+        }
+
+        /**
+         * 设置画笔颜色
+         * @param {string} color - 颜色值
+         */
+        function setBrushColor(color) {
+            brushColor = color;
+
+            // 如果当前是橡皮擦，切换到画笔
+            if (currentTool === 'eraser') {
+                setTool('brush');
+            }
+
+            // 更新UI
+            document.querySelectorAll('[data-color]').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.color === color) {
+                    btn.classList.add('active');
+                }
+            });
+
+            showTooltip(`画笔颜色: ${color}`, 1000);
+        }
+
+        /**
+         * 设置画笔大小
+         * @param {number} size - 画笔大小
+         */
+        function setBrushSize(size) {
+            brushSize = Math.max(1, Math.min(50, size));
+
+            // 更新UI
+            const sizeInput = document.getElementById('brushSize');
+            if (sizeInput) {
+                sizeInput.value = brushSize;
+            }
+
+            // 更新标签
+            const sizeLabel = document.getElementById('brushSizeLabel');
+            if (sizeLabel) {
+                sizeLabel.textContent = brushSize;
+            }
+        }
+
+        /**
+         * 为当前面设置图案
+         * @param {string} pattern - 图案类型
+         */
+        function setPattern(pattern) {
+            const faceInfo = faceData[currentFaceIndex];
+            if (faceInfo) {
+                saveToHistory();
+                faceInfo.pattern = pattern;
+                faceInfo.rotation = patternRotation;
+                renderFaceContent(currentFaceIndex);
+                showTooltip(`已为${faceInfo.name}面设置图案`, 1500);
+            }
+        }
+
+        /**
+         * 设置当前面的背景色
+         * @param {string} color - 颜色值
+         */
+        function setFaceColor(color) {
+            const faceInfo = faceData[currentFaceIndex];
+            if (faceInfo) {
+                saveToHistory();
+                faceInfo.color = color;
+                renderFaceContent(currentFaceIndex);
+                updateFaceButton(currentFaceIndex);
+                showTooltip(`已更改${faceInfo.name}面颜色`, 1500);
+            }
+        }
+
+        /**
+         * 设置图案旋转角度
+         * @param {number} angle - 旋转角度(度)
+         */
+        function rotatePattern(angle) {
+            patternRotation = (patternRotation + angle) % 360;
+
+            const faceInfo = faceData[currentFaceIndex];
+            if (faceInfo && faceInfo.pattern) {
+                saveToHistory();
+                faceInfo.rotation = patternRotation;
+                renderFaceContent(currentFaceIndex);
+            }
+
+            showTooltip(`图案旋转: ${patternRotation}°`, 1000);
+        }
+
+        /**
+         * 清空当前面的绘制内容
+         */
+        function clearCurrentFace() {
+            const faceInfo = faceData[currentFaceIndex];
+            if (faceInfo) {
+                saveToHistory();
+                faceInfo.pattern = null;
+                faceInfo.rotation = 0;
+                faceInfo.elements = [];
+
+                // 清空Canvas
+                const el = faceElements[currentFaceIndex];
+                if (el) {
+                    const mainCtx = el.mainCtx;
+                    const drawCtx = el.drawCtx;
+                    if (mainCtx) {
+                        mainCtx.clearRect(0, 0, FACE_SIZE, FACE_SIZE);
+                    }
+                    if (drawCtx) {
+                        drawCtx.clearRect(0, 0, FACE_SIZE, FACE_SIZE);
+                    }
+                }
+
+                renderFaceContent(currentFaceIndex);
+                showTooltip(`已清除${faceInfo.name}面的内容`, 1500);
+            }
+        }
+
+        /**
+         * 清空所有面的绘制内容
+         */
+        function clearAllFaces() {
+            if (!confirm('确定要清空所有面的内容吗？')) {
+                return;
+            }
+
+            saveToHistory();
+
+            faceData.forEach((faceInfo, index) => {
+                faceInfo.pattern = null;
+                faceInfo.rotation = 0;
+                faceInfo.elements = [];
+
+                // 清空Canvas
+                const el = faceElements[index];
+                if (el) {
+                    const mainCtx = el.mainCtx;
+                    const drawCtx = el.drawCtx;
+                    if (mainCtx) {
+                        mainCtx.clearRect(0, 0, FACE_SIZE, FACE_SIZE);
+                    }
+                    if (drawCtx) {
+                        drawCtx.clearRect(0, 0, FACE_SIZE, FACE_SIZE);
+                    }
+                }
+            });
+
+            updateAllTextures();
+            showTooltip('已清除所有面的内容', 1500);
+        }
+
+        /**
+         * 更新面预览
+         * @param {number} index - 面索引
+         */
+        function updateFacePreview(index) {
+            const faceInfo = faceData[index];
+            if (!faceInfo) return;
+
+            // 更新信息显示
+            document.getElementById('infoPattern').textContent = faceInfo.pattern || '无';
+
+            // 更新面选择按钮颜色
+            updateFaceButton(index);
+        }
+
+        /**
+         * 更新面选择按钮的颜色
+         * @param {number} index - 面索引
+         */
+        function updateFaceButton(index) {
+            const faceId = faceIds[index];
+            const btn = document.querySelector(`.face-btn[data-face="${faceId}"]`);
+            if (btn) {
+                const faceInfo = faceData[index];
+                btn.style.backgroundColor = faceInfo.color || DEFAULT_FACE_COLORS[index];
+            }
+        }
+
+        /**
+         * 更新所有面按钮颜色
+         */
+        function updateAllFaceButtons() {
+            faceIds.forEach((_, index) => {
+                updateFaceButton(index);
+            });
         }
 
         /**
@@ -2613,6 +3251,38 @@
             if (flipVBtn) {
                 flipVBtn.addEventListener('click', () => flipNet('vertical'));
             }
+
+            // 绘图工具按钮
+            document.querySelectorAll('[data-tool]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const tool = e.currentTarget.dataset.tool;
+                    setTool(tool);
+                });
+            });
+
+            // 颜色选择按钮
+            document.querySelectorAll('[data-color]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const color = e.currentTarget.dataset.color;
+                    setBrushColor(color);
+                });
+            });
+
+            // 画笔大小滑块
+            const brushSizeInput = document.getElementById('brushSize');
+            if (brushSizeInput) {
+                brushSizeInput.addEventListener('input', (e) => {
+                    setBrushSize(parseInt(e.target.value));
+                });
+            }
+
+            // 面颜色选择按钮
+            document.querySelectorAll('[data-face-color]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const color = e.currentTarget.dataset.faceColor;
+                    setFaceColor(color);
+                });
+            });
 
             // 键盘快捷键
             document.addEventListener('keydown', (e) => {
