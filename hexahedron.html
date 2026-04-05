@@ -563,61 +563,10 @@
                 </h2>
 
                 <!-- 展开图网格 -->
-                <div class="flex justify-center items-center py-4">
-                    <div class="net-grid" id="netGrid">
-                        <!-- 第一行 -->
-                        <div class="net-face" data-position="0-0" data-face="">
-                            <span class="face-label"></span>
-                            <span class="pattern"></span>
-                        </div>
-                        <div class="net-face" data-position="0-1" data-face="top">
-                            <span class="face-label">顶面</span>
-                            <span class="pattern"></span>
-                        </div>
-                        <div class="net-face" data-position="0-2" data-face="">
-                            <span class="face-label"></span>
-                            <span class="pattern"></span>
-                        </div>
-                        <div class="net-face" data-position="0-3" data-face="">
-                            <span class="face-label"></span>
-                            <span class="pattern"></span>
-                        </div>
-
-                        <!-- 第二行 -->
-                        <div class="net-face" data-position="1-0" data-face="left">
-                            <span class="face-label">左面</span>
-                            <span class="pattern"></span>
-                        </div>
-                        <div class="net-face selected" data-position="1-1" data-face="front">
-                            <span class="face-label">前面</span>
-                            <span class="pattern"></span>
-                        </div>
-                        <div class="net-face" data-position="1-2" data-face="right">
-                            <span class="face-label">右面</span>
-                            <span class="pattern"></span>
-                        </div>
-                        <div class="net-face" data-position="1-3" data-face="back">
-                            <span class="face-label">后面</span>
-                            <span class="pattern"></span>
-                        </div>
-
-                        <!-- 第三行 -->
-                        <div class="net-face" data-position="2-0" data-face="">
-                            <span class="face-label"></span>
-                            <span class="pattern"></span>
-                        </div>
-                        <div class="net-face" data-position="2-1" data-face="bottom">
-                            <span class="face-label">底面</span>
-                            <span class="pattern"></span>
-                        </div>
-                        <div class="net-face" data-position="2-2" data-face="">
-                            <span class="face-label"></span>
-                            <span class="pattern"></span>
-                        </div>
-                        <div class="net-face" data-position="2-3" data-face="">
-                            <span class="face-label"></span>
-                            <span class="pattern"></span>
-                        </div>
+                <div class="flex justify-center items-center py-4" style="min-height: 350px;">
+                    <!-- 动态展开图容器 -->
+                    <div id="net-container" style="position: relative; width: 100%; height: 320px;">
+                        <!-- 面片元素将由JavaScript动态生成 -->
                     </div>
                 </div>
 
@@ -818,6 +767,13 @@
         let history = [];
         let historyIndex = -1;
         const MAX_HISTORY = 50;
+
+        // ============================================
+        // 2D展开图渲染系统常量
+        // ============================================
+
+        const FACE_SIZE = 100; // 面片大小(像素)
+        const NET_PADDING = 20; // 展开图边距
 
         // 面片默认颜色
         const DEFAULT_FACE_COLORS = [
@@ -1167,6 +1123,677 @@
             });
         }
 
+        // ============================================
+        // 2D展开图渲染系统
+        // ============================================
+
+        /**
+         * 初始化2D展开图
+         * 创建Canvas容器和面片元素
+         */
+        function init2DNet() {
+            netContainer = document.getElementById('net-container');
+            if (!netContainer) {
+                console.warn('未找到展开图容器元素');
+                return;
+            }
+
+            // 创建Canvas用于绘制网格和背景
+            netCanvas = document.createElement('canvas');
+            netCanvas.id = 'net-canvas';
+            netCanvas.style.position = 'absolute';
+            netCanvas.style.top = '0';
+            netCanvas.style.left = '0';
+            netCanvas.style.pointerEvents = 'none';
+            netContainer.appendChild(netCanvas);
+
+            netCtx = netCanvas.getContext('2d');
+
+            // 创建面片DOM元素
+            faceElements = [];
+            faceIds.forEach((faceId, index) => {
+                const element = createFaceElement(index);
+                faceElements.push(element);
+                netContainer.appendChild(element);
+            });
+
+            // 绑定resize事件
+            window.addEventListener('resize', resizeNet);
+
+            // 初始调整大小
+            resizeNet();
+        }
+
+        /**
+         * 创建面片元素
+         * @param {number} faceIndex - 面索引
+         * @returns {HTMLElement} 面片DOM元素
+         */
+        function createFaceElement(faceIndex) {
+            const faceId = faceIds[faceIndex];
+            const faceName = faceNames[faceIndex];
+
+            // 创建容器
+            const container = document.createElement('div');
+            container.className = 'net-face-element';
+            container.dataset.faceId = faceId;
+            container.dataset.faceIndex = faceIndex;
+            container.style.position = 'absolute';
+            container.style.width = FACE_SIZE + 'px';
+            container.style.height = FACE_SIZE + 'px';
+            container.style.border = '2px solid rgba(255, 255, 255, 0.3)';
+            container.style.borderRadius = '4px';
+            container.style.cursor = 'pointer';
+            container.style.transition = 'all 0.3s ease';
+            container.style.overflow = 'hidden';
+
+            // 创建标签
+            const label = document.createElement('span');
+            label.className = 'face-label';
+            label.textContent = faceName + '面';
+            label.style.position = 'absolute';
+            label.style.top = '4px';
+            label.style.left = '6px';
+            label.style.fontSize = '10px';
+            label.style.color = 'rgba(255, 255, 255, 0.6)';
+            label.style.pointerEvents = 'none';
+            label.style.zIndex = '10';
+            container.appendChild(label);
+
+            // 创建绘图Canvas
+            const canvas = document.createElement('canvas');
+            canvas.className = 'face-canvas';
+            canvas.width = FACE_SIZE;
+            canvas.height = FACE_SIZE;
+            canvas.style.width = '100%';
+            canvas.style.height = '100%';
+            canvas.style.display = 'block';
+            container.appendChild(canvas);
+
+            // 绑定点击事件
+            container.addEventListener('click', () => {
+                selectFace(faceId);
+                // 更新选中样式
+                faceElements.forEach(el => el.style.borderColor = 'rgba(255, 255, 255, 0.3)');
+                container.style.borderColor = '#3b82f6';
+                container.style.boxShadow = '0 0 10px rgba(59, 130, 246, 0.5)';
+            });
+
+            // 鼠标悬停效果
+            container.addEventListener('mouseenter', () => {
+                if (currentFaceIndex !== faceIndex) {
+                    container.style.borderColor = 'rgba(255, 255, 255, 0.6)';
+                    container.style.transform = 'scale(1.02)';
+                }
+            });
+
+            container.addEventListener('mouseleave', () => {
+                if (currentFaceIndex !== faceIndex) {
+                    container.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+                    container.style.transform = 'scale(1)';
+                }
+            });
+
+            return container;
+        }
+
+        /**
+         * 调整展开图Canvas大小
+         */
+        function resizeNet() {
+            if (!netContainer || !netCanvas) return;
+
+            const containerRect = netContainer.getBoundingClientRect();
+            netCanvas.width = containerRect.width;
+            netCanvas.height = containerRect.height;
+
+            renderNet();
+        }
+
+        /**
+         * 渲染展开图
+         * 绘制网格背景并定位面片元素
+         */
+        function renderNet() {
+            if (!netCtx || !netCanvas) return;
+
+            // 清空Canvas
+            netCtx.clearRect(0, 0, netCanvas.width, netCanvas.height);
+
+            // 如果没有当前布局，使用默认布局
+            if (!currentNetLayout) {
+                currentNetLayout = NET_STRUCTURES['1-4-1-v1'];
+            }
+
+            // 计算布局边界
+            const layout = currentNetLayout.layout;
+            let minX = Infinity, maxX = -Infinity;
+            let minY = Infinity, maxY = -Infinity;
+
+            layout.forEach(item => {
+                minX = Math.min(minX, item.gridX);
+                maxX = Math.max(maxX, item.gridX);
+                minY = Math.min(minY, item.gridY);
+                maxY = Math.max(maxY, item.gridY);
+            });
+
+            // 计算展开图总尺寸
+            const netWidth = (maxX - minX + 1) * FACE_SIZE;
+            const netHeight = (maxY - minY + 1) * FACE_SIZE;
+
+            // 计算起始位置（居中）
+            const startX = (netCanvas.width - netWidth) / 2;
+            const startY = (netCanvas.height - netHeight) / 2;
+
+            // 绘制网格背景
+            drawNetGrid(startX, startY, maxX - minX + 1, maxY - minY + 1);
+
+            // 定位面片元素
+            layout.forEach(item => {
+                const faceIndex = faceIds.indexOf(item.faceId);
+                if (faceIndex === -1) return;
+
+                const element = faceElements[faceIndex];
+                if (!element) return;
+
+                const x = startX + (item.gridX - minX) * FACE_SIZE;
+                const y = startY + (item.gridY - minY) * FACE_SIZE;
+
+                element.style.left = x + 'px';
+                element.style.top = y + 'px';
+                element.style.display = 'block';
+
+                // 渲染面内容
+                renderFaceContent(faceIndex);
+            });
+
+            // 隐藏不在布局中的面片
+            faceIds.forEach((faceId, index) => {
+                const inLayout = layout.some(item => item.faceId === faceId);
+                if (!inLayout && faceElements[index]) {
+                    faceElements[index].style.display = 'none';
+                }
+            });
+
+            // 更新当前选中面的样式
+            if (faceElements[currentFaceIndex]) {
+                faceElements[currentFaceIndex].style.borderColor = '#3b82f6';
+                faceElements[currentFaceIndex].style.boxShadow = '0 0 10px rgba(59, 130, 246, 0.5)';
+            }
+        }
+
+        /**
+         * 绘制展开图网格背景
+         * @param {number} startX - 起始X坐标
+         * @param {number} startY - 起始Y坐标
+         * @param {number} cols - 列数
+         * @param {number} rows - 行数
+         */
+        function drawNetGrid(startX, startY, cols, rows) {
+            netCtx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            netCtx.lineWidth = 1;
+
+            // 绘制竖线
+            for (let i = 0; i <= cols; i++) {
+                const x = startX + i * FACE_SIZE;
+                netCtx.beginPath();
+                netCtx.moveTo(x, startY);
+                netCtx.lineTo(x, startY + rows * FACE_SIZE);
+                netCtx.stroke();
+            }
+
+            // 绘制横线
+            for (let i = 0; i <= rows; i++) {
+                const y = startY + i * FACE_SIZE;
+                netCtx.beginPath();
+                netCtx.moveTo(startX, y);
+                netCtx.lineTo(startX + cols * FACE_SIZE, y);
+                netCtx.stroke();
+            }
+
+            // 绘制对角线辅助线（可选）
+            netCtx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    const x = startX + col * FACE_SIZE;
+                    const y = startY + row * FACE_SIZE;
+                    netCtx.beginPath();
+                    netCtx.moveTo(x, y);
+                    netCtx.lineTo(x + FACE_SIZE, y + FACE_SIZE);
+                    netCtx.stroke();
+                    netCtx.beginPath();
+                    netCtx.moveTo(x + FACE_SIZE, y);
+                    netCtx.lineTo(x, y + FACE_SIZE);
+                    netCtx.stroke();
+                }
+            }
+        }
+
+        /**
+         * 渲染面片内容
+         * @param {number} faceIndex - 面索引
+         */
+        function renderFaceContent(faceIndex) {
+            const element = faceElements[faceIndex];
+            if (!element) return;
+
+            const canvas = element.querySelector('.face-canvas');
+            if (!canvas) return;
+
+            const ctx = canvas.getContext('2d');
+            const faceInfo = faceData[faceIndex];
+            const bgColor = faceInfo.color || DEFAULT_FACE_COLORS[faceIndex];
+
+            // 清空Canvas
+            ctx.clearRect(0, 0, FACE_SIZE, FACE_SIZE);
+
+            // 绘制背景色
+            ctx.fillStyle = bgColor;
+            ctx.fillRect(0, 0, FACE_SIZE, FACE_SIZE);
+
+            // 绘制边框
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(0, 0, FACE_SIZE, FACE_SIZE);
+
+            // 绘制图案
+            if (faceInfo.pattern) {
+                drawPattern(ctx, faceInfo.pattern, faceInfo.rotation || 0, bgColor);
+            }
+
+            // 更新3D纹理
+            updateFaceTexture(faceIndex);
+        }
+
+        /**
+         * 判断颜色是否为深色
+         * @param {string} color - 颜色值
+         * @returns {boolean} 是否为深色
+         */
+        function isDarkColor(color) {
+            // 解析颜色
+            let r, g, b;
+            if (color.startsWith('#')) {
+                const hex = color.slice(1);
+                r = parseInt(hex.substr(0, 2), 16);
+                g = parseInt(hex.substr(2, 2), 16);
+                b = parseInt(hex.substr(4, 2), 16);
+            } else if (color.startsWith('rgb')) {
+                const match = color.match(/\d+/g);
+                if (match) {
+                    [r, g, b] = match.map(Number);
+                }
+            } else {
+                return false;
+            }
+
+            // 计算亮度
+            const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+            return luminance < 0.5;
+        }
+
+        /**
+         * 绘制图案
+         * @param {CanvasRenderingContext2D} ctx - Canvas上下文
+         * @param {string} pattern - 图案类型
+         * @param {number} rotation - 旋转角度(度)
+         * @param {string} bgColor - 背景色
+         */
+        function drawPattern(ctx, pattern, rotation, bgColor) {
+            const centerX = FACE_SIZE / 2;
+            const centerY = FACE_SIZE / 2;
+            const patternColor = isDarkColor(bgColor) ? '#ffffff' : '#000000';
+
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.rotate(rotation * Math.PI / 180);
+            ctx.translate(-centerX, -centerY);
+
+            ctx.fillStyle = patternColor;
+            ctx.strokeStyle = patternColor;
+            ctx.lineWidth = 3;
+
+            const size = FACE_SIZE * 0.6;
+
+            switch (pattern) {
+                case 'circle':
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, size / 2.5, 0, Math.PI * 2);
+                    ctx.fill();
+                    break;
+
+                case 'circle-hollow':
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, size / 2.5, 0, Math.PI * 2);
+                    ctx.stroke();
+                    break;
+
+                case 'triangle':
+                    ctx.beginPath();
+                    ctx.moveTo(centerX, centerY - size / 2.5);
+                    ctx.lineTo(centerX - size / 2.8, centerY + size / 3.5);
+                    ctx.lineTo(centerX + size / 2.8, centerY + size / 3.5);
+                    ctx.closePath();
+                    ctx.fill();
+                    break;
+
+                case 'square':
+                    ctx.fillRect(centerX - size / 3, centerY - size / 3, size / 1.5, size / 1.5);
+                    break;
+
+                case 'diamond':
+                    ctx.save();
+                    ctx.translate(centerX, centerY);
+                    ctx.rotate(Math.PI / 4);
+                    ctx.fillRect(-size / 3.5, -size / 3.5, size / 1.75, size / 1.75);
+                    ctx.restore();
+                    break;
+
+                case 'cross':
+                    const crossSize = size / 3;
+                    ctx.fillRect(centerX - crossSize / 2, centerY - size / 2.5, crossSize, size / 1.25);
+                    ctx.fillRect(centerX - size / 2.5, centerY - crossSize / 2, size / 1.25, crossSize);
+                    break;
+
+                case 'star':
+                    drawStar(ctx, centerX, centerY, 5, size / 2.5, size / 5);
+                    break;
+
+                case 'heart':
+                    ctx.save();
+                    ctx.translate(centerX, centerY + 5);
+                    ctx.beginPath();
+                    const heartSize = size / 3;
+                    ctx.moveTo(0, heartSize * 0.8);
+                    ctx.bezierCurveTo(-heartSize, -heartSize * 0.2, -heartSize, -heartSize * 0.8, 0, -heartSize * 0.3);
+                    ctx.bezierCurveTo(heartSize, -heartSize * 0.8, heartSize, -heartSize * 0.2, 0, heartSize * 0.8);
+                    ctx.fill();
+                    ctx.restore();
+                    break;
+
+                case 'moon':
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, size / 2.5, 0, Math.PI * 2);
+                    ctx.fill();
+                    // 用背景色画一个小圆形成月牙
+                    ctx.fillStyle = bgColor;
+                    ctx.beginPath();
+                    ctx.arc(centerX + size / 6, centerY - size / 8, size / 3.5, 0, Math.PI * 2);
+                    ctx.fill();
+                    break;
+
+                case 'lightning':
+                    ctx.beginPath();
+                    ctx.moveTo(centerX + 5, centerY - size / 2.5);
+                    ctx.lineTo(centerX - 5, centerY);
+                    ctx.lineTo(centerX + 5, centerY);
+                    ctx.lineTo(centerX - 5, centerY + size / 2.5);
+                    ctx.lineTo(centerX + 5, centerY + size / 10);
+                    ctx.lineTo(centerX - 5, centerY + size / 10);
+                    ctx.closePath();
+                    ctx.fill();
+                    break;
+
+                case 'arrow-up':
+                    drawArrow(ctx, centerX, centerY + size / 4, centerX, centerY - size / 4, patternColor);
+                    break;
+
+                case 'arrow-down':
+                    drawArrow(ctx, centerX, centerY - size / 4, centerX, centerY + size / 4, patternColor);
+                    break;
+
+                case 'arrow-left':
+                    drawArrow(ctx, centerX + size / 4, centerY, centerX - size / 4, centerY, patternColor);
+                    break;
+
+                case 'arrow-right':
+                    drawArrow(ctx, centerX - size / 4, centerY, centerX + size / 4, centerY, patternColor);
+                    break;
+
+                case 'line-h':
+                    ctx.beginPath();
+                    ctx.moveTo(centerX - size / 2.5, centerY);
+                    ctx.lineTo(centerX + size / 2.5, centerY);
+                    ctx.stroke();
+                    break;
+
+                case 'line-v':
+                    ctx.beginPath();
+                    ctx.moveTo(centerX, centerY - size / 2.5);
+                    ctx.lineTo(centerX, centerY + size / 2.5);
+                    ctx.stroke();
+                    break;
+
+                case 'line-d':
+                    ctx.beginPath();
+                    ctx.moveTo(centerX - size / 3, centerY - size / 3);
+                    ctx.lineTo(centerX + size / 3, centerY + size / 3);
+                    ctx.stroke();
+                    break;
+
+                // 点数图案
+                case 'dot-1':
+                    drawDot(ctx, centerX, centerY);
+                    break;
+                case 'dot-2':
+                    drawDot(ctx, centerX - 15, centerY - 15);
+                    drawDot(ctx, centerX + 15, centerY + 15);
+                    break;
+                case 'dot-3':
+                    drawDot(ctx, centerX, centerY);
+                    drawDot(ctx, centerX - 18, centerY - 18);
+                    drawDot(ctx, centerX + 18, centerY + 18);
+                    break;
+                case 'dot-4':
+                    drawDot(ctx, centerX - 15, centerY - 15);
+                    drawDot(ctx, centerX + 15, centerY - 15);
+                    drawDot(ctx, centerX - 15, centerY + 15);
+                    drawDot(ctx, centerX + 15, centerY + 15);
+                    break;
+                case 'dot-5':
+                    drawDot(ctx, centerX, centerY);
+                    drawDot(ctx, centerX - 15, centerY - 15);
+                    drawDot(ctx, centerX + 15, centerY - 15);
+                    drawDot(ctx, centerX - 15, centerY + 15);
+                    drawDot(ctx, centerX + 15, centerY + 15);
+                    break;
+                case 'dot-6':
+                    drawDot(ctx, centerX - 15, centerY - 18);
+                    drawDot(ctx, centerX + 15, centerY - 18);
+                    drawDot(ctx, centerX - 15, centerY);
+                    drawDot(ctx, centerX + 15, centerY);
+                    drawDot(ctx, centerX - 15, centerY + 18);
+                    drawDot(ctx, centerX + 15, centerY + 18);
+                    break;
+            }
+
+            ctx.restore();
+        }
+
+        /**
+         * 绘制星形
+         * @param {CanvasRenderingContext2D} ctx - Canvas上下文
+         * @param {number} cx - 中心X坐标
+         * @param {number} cy - 中心Y坐标
+         * @param {number} spikes - 尖角数量
+         * @param {number} outerRadius - 外半径
+         * @param {number} innerRadius - 内半径
+         */
+        function drawStar(ctx, cx, cy, spikes, outerRadius, innerRadius) {
+            let rot = Math.PI / 2 * 3;
+            let x = cx;
+            let y = cy;
+            const step = Math.PI / spikes;
+
+            ctx.beginPath();
+            ctx.moveTo(cx, cy - outerRadius);
+
+            for (let i = 0; i < spikes; i++) {
+                x = cx + Math.cos(rot) * outerRadius;
+                y = cy + Math.sin(rot) * outerRadius;
+                ctx.lineTo(x, y);
+                rot += step;
+
+                x = cx + Math.cos(rot) * innerRadius;
+                y = cy + Math.sin(rot) * innerRadius;
+                ctx.lineTo(x, y);
+                rot += step;
+            }
+
+            ctx.lineTo(cx, cy - outerRadius);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        /**
+         * 绘制箭头
+         * @param {CanvasRenderingContext2D} ctx - Canvas上下文
+         * @param {number} fromX - 起点X
+         * @param {number} fromY - 起点Y
+         * @param {number} toX - 终点X
+         * @param {number} toY - 终点Y
+         * @param {string} color - 颜色
+         */
+        function drawArrow(ctx, fromX, fromY, toX, toY, color) {
+            const headLength = 12;
+            const dx = toX - fromX;
+            const dy = toY - fromY;
+            const angle = Math.atan2(dy, dx);
+
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = 3;
+
+            // 绘制线段
+            ctx.beginPath();
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(toX, toY);
+            ctx.stroke();
+
+            // 绘制箭头头部
+            ctx.beginPath();
+            ctx.moveTo(toX, toY);
+            ctx.lineTo(toX - headLength * Math.cos(angle - Math.PI / 6), toY - headLength * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(toX - headLength * Math.cos(angle + Math.PI / 6), toY - headLength * Math.sin(angle + Math.PI / 6));
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        /**
+         * 绘制点
+         * @param {CanvasRenderingContext2D} ctx - Canvas上下文
+         * @param {number} x - X坐标
+         * @param {number} y - Y坐标
+         */
+        function drawDot(ctx, x, y) {
+            ctx.beginPath();
+            ctx.arc(x, y, 8, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        /**
+         * 更新指定面的3D纹理
+         * @param {number} faceIndex - 面索引
+         */
+        function updateFaceTexture(faceIndex) {
+            // 获取面片元素的Canvas
+            const element = faceElements[faceIndex];
+            if (!element) return;
+
+            const canvas = element.querySelector('.face-canvas');
+            if (!canvas) return;
+
+            // 更新或创建Three.js纹理
+            if (faceTextures[faceIndex]) {
+                faceTextures[faceIndex].image = canvas;
+                faceTextures[faceIndex].needsUpdate = true;
+            }
+
+            // 同时更新faceCanvases用于3D预览
+            if (faceCanvases[faceIndex]) {
+                const ctx = faceContexts[faceIndex];
+                ctx.clearRect(0, 0, 256, 256);
+                ctx.drawImage(canvas, 0, 0, 256, 256);
+            }
+        }
+
+        /**
+         * 更新所有面的纹理
+         */
+        function updateAllTextures() {
+            faceIds.forEach((_, index) => {
+                renderFaceContent(index);
+            });
+        }
+
+        /**
+         * 为当前选中的面设置图案
+         * @param {string} pattern - 图案类型
+         */
+        function setPatternToCurrentFace(pattern) {
+            const faceInfo = faceData[currentFaceIndex];
+            if (faceInfo) {
+                saveToHistory();
+                faceInfo.pattern = pattern;
+                faceInfo.rotation = 0;
+                renderFaceContent(currentFaceIndex);
+                showTooltip(`已为${faceInfo.name}面设置图案`, 1500);
+            }
+        }
+
+        /**
+         * 清除当前面的图案
+         */
+        function clearCurrentFace() {
+            const faceInfo = faceData[currentFaceIndex];
+            if (faceInfo && faceInfo.pattern) {
+                saveToHistory();
+                faceInfo.pattern = null;
+                faceInfo.rotation = 0;
+                renderFaceContent(currentFaceIndex);
+                showTooltip(`已清除${faceInfo.name}面的图案`, 1500);
+            }
+        }
+
+        /**
+         * 清除所有面的图案
+         */
+        function clearAllFaces() {
+            saveToHistory();
+            faceData.forEach(face => {
+                face.pattern = null;
+                face.rotation = 0;
+            });
+            updateAllTextures();
+            showTooltip('已清除所有面的图案', 1500);
+        }
+
+        /**
+         * 随机生成图案
+         */
+        function randomizePatterns() {
+            const patterns = [
+                'circle', 'triangle', 'square', 'diamond', 'star', 'cross',
+                'heart', 'moon', 'lightning', 'arrow-up', 'arrow-down',
+                'arrow-left', 'arrow-right', 'line-h', 'line-v', 'line-d',
+                'dot-1', 'dot-2', 'dot-3', 'dot-4', 'dot-5', 'dot-6'
+            ];
+
+            saveToHistory();
+            faceData.forEach(face => {
+                if (Math.random() > 0.3) { // 70%概率有图案
+                    face.pattern = patterns[Math.floor(Math.random() * patterns.length)];
+                    face.rotation = [0, 90, 180, 270][Math.floor(Math.random() * 4)];
+                } else {
+                    face.pattern = null;
+                    face.rotation = 0;
+                }
+            });
+            updateAllTextures();
+            showTooltip('已随机生成图案', 1500);
+        }
+
         /**
          * 主初始化函数
          */
@@ -1180,10 +1807,14 @@
             // 设置默认展开图
             currentNetLayout = NET_STRUCTURES['1-4-1-v1'];
 
-            // 后续任务会实现这些函数
-            // init3DScene();
-            // init2DNet();
-            // setupEventListeners();
+            // 初始化2D展开图渲染系统
+            init2DNet();
+
+            // 初始化历史记录
+            saveToHistory();
+
+            // 更新UI
+            updateUI();
 
             // 显示欢迎提示
             showTooltip('欢迎使用六面体展开图训练器！', 2000);
