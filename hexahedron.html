@@ -2003,20 +2003,23 @@
             // 初始化3D场景
             init3DScene();
 
-            // 初始化历史记录
-            saveToHistory();
+            // 绑定事件监听器
+            setupEventListeners();
 
             // 初始化移面历史记录
             saveMoveHistory();
 
-            // 绑定事件
-            bindEvents();
+            // 初始化历史记录
+            saveToHistory();
 
-            // 更新UI
-            updateUI();
+            // 设置默认展开图类型
+            changeNetType('1-4-1');
+
+            // 选择第一个面
+            selectFace(faceIds[0]);
 
             // 显示欢迎提示
-            showTooltip('欢迎使用六面体展开图训练器！选中面片后可使用方向键移面', 2500);
+            showTooltip('欢迎使用六面体展开图训练器！', 2000);
 
             console.log('初始化完成');
         }
@@ -3168,17 +3171,14 @@
         // ============================================
 
         /**
-         * 绑定所有事件监听器
+         * 设置所有事件监听器
+         * 绑定UI元素的事件处理函数
          */
-        function bindEvents() {
+        function setupEventListeners() {
             // 返回按钮
             const backBtn = document.getElementById('backBtn');
             if (backBtn) {
-                backBtn.addEventListener('click', () => {
-                    if (confirm('确定要返回主页吗？')) {
-                        window.location.href = 'index.html';
-                    }
-                });
+                backBtn.addEventListener('click', goBack);
             }
 
             // 自动旋转按钮
@@ -3402,34 +3402,72 @@
                     toggleFold();
                 }
             });
+
+            // 窗口大小调整 - 同时更新2D和3D视图
+            window.addEventListener('resize', () => {
+                resizeNet();
+                onWindowResize();
+            });
+        }
+
+        /**
+         * 返回主编辑器页面
+         */
+        function goBack() {
+            if (confirm('确定要返回主页吗？')) {
+                window.location.href = 'index.html';
+            }
         }
 
         /**
          * 切换展开图类型
+         * @param {string} netType - 展开图类型 ('1-4-1', '2-3-1', '3-3', '2-2-2')
+         */
+        function changeNetType(netType) {
+            // 获取该类型的结构定义
+            const typeInfo = NET_TYPE_LIST.find(t => t.id === netType);
+            if (!typeInfo || typeInfo.variants.length === 0) {
+                console.warn('未知的展开图类型:', netType);
+                return;
+            }
+
+            // 深拷贝布局
+            const structure = NET_STRUCTURES[typeInfo.variants[0]];
+            currentNetLayout = JSON.parse(JSON.stringify(structure));
+
+            // 更新面位置
+            renderNet();
+
+            // 更新所有纹理
+            updateAllTextures();
+
+            // 重置移面历史记录
+            moveHistory = [];
+            moveHistoryIndex = -1;
+            saveMoveHistory();
+
+            // 如果在展开状态，更新3D视图
+            if (isUnfolded) {
+                animateToNet();
+            }
+
+            // 更新UI按钮状态
+            document.querySelectorAll('.selector-btn[data-type]').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.type === netType) {
+                    btn.classList.add('active');
+                }
+            });
+
+            showTooltip(`已切换到${typeInfo.name}`, 1500);
+        }
+
+        /**
+         * 切换展开图类型（兼容旧函数名）
          * @param {string} type - 展开图类型
          */
         function switchNetType(type) {
-            // 获取该类型的第一个变体
-            const typeInfo = NET_TYPE_LIST.find(t => t.id === type);
-            if (typeInfo && typeInfo.variants.length > 0) {
-                currentNetLayout = JSON.parse(JSON.stringify(NET_STRUCTURES[typeInfo.variants[0]]));
-                renderNet();
-
-                // 更新按钮状态
-                document.querySelectorAll('.selector-btn[data-type]').forEach(btn => {
-                    btn.classList.remove('active');
-                    if (btn.dataset.type === type) {
-                        btn.classList.add('active');
-                    }
-                });
-
-                // 重置移面历史
-                moveHistory = [];
-                moveHistoryIndex = -1;
-                saveMoveHistory();
-
-                showTooltip(`已切换到${typeInfo.name}`, 1500);
-            }
+            changeNetType(type);
         }
 
         /**
