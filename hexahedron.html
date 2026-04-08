@@ -992,9 +992,9 @@
         // ============================================
 
         const NET_STRUCTURES = {
-            // 1-4-1型 (6种变体)
-            '1-4-1-v1': {
-                name: '1-4-1型-变体1',
+            // 1-4-1型 (标准十字型)
+            '1-4-1': {
+                name: '1-4-1型',
                 type: '1-4-1',
                 description: '顶部在上，底部在下，中间四面横向排列',
                 layout: [
@@ -1014,175 +1014,29 @@
                 ],
                 gridSize: { cols: 4, rows: 3 }
             },
-            '1-4-1-v2': {
-                name: '1-4-1型-变体2',
-                type: '1-4-1',
-                description: '顶部在下，底部在上，中间四面横向排列',
-                layout: [
-                    { faceId: 'bottom', gridX: 1, gridY: 0 },
-                    { faceId: 'left', gridX: 0, gridY: 1 },
-                    { faceId: 'front', gridX: 1, gridY: 1 },
-                    { faceId: 'right', gridX: 2, gridY: 1 },
-                    { faceId: 'back', gridX: 3, gridY: 1 },
-                    { faceId: 'top', gridX: 1, gridY: 2 }
-                ],
-                connections: [
-                    { from: 'bottom', to: 'front', edge: 'top' },
-                    { from: 'left', to: 'front', edge: 'left' },
-                    { from: 'right', to: 'front', edge: 'right' },
-                    { from: 'back', to: 'right', edge: 'right' },
-                    { from: 'top', to: 'front', edge: 'bottom' }
-                ],
-                gridSize: { cols: 4, rows: 3 }
-            },
-            '1-4-1-v3': {
-                name: '1-4-1型-变体3',
-                type: '1-4-1',
-                description: '顶部在左，底部在右，中间四面纵向排列',
-                layout: [
-                    { faceId: 'top', gridX: 0, gridY: 1 },
-                    { faceId: 'front', gridX: 1, gridY: 0 },
-                    { faceId: 'left', gridX: 1, gridY: 1 },
-                    { faceId: 'back', gridX: 1, gridY: 2 },
-                    { faceId: 'right', gridX: 1, gridY: 3 },
-                    { faceId: 'bottom', gridX: 2, gridY: 1 }
-                ],
-                connections: [
-                    { from: 'top', to: 'left', edge: 'right' },
-                    { from: 'front', to: 'left', edge: 'top' },
-                    { from: 'back', to: 'left', edge: 'bottom' },
-                    { from: 'right', to: 'left', edge: 'right' },
-                    { from: 'bottom', to: 'right', edge: 'right' }
-                ],
-                gridSize: { cols: 3, rows: 4 }
-            },
-            '1-4-1-v4': {
-                name: '1-4-1型-变体4',
-                type: '1-4-1',
-                description: '顶部在右，底部在左，中间四面纵向排列',
-                layout: [
-                    { faceId: 'bottom', gridX: 0, gridY: 1 },
-                    { faceId: 'front', gridX: 1, gridY: 0 },
-                    { faceId: 'left', gridX: 1, gridY: 1 },
-                    { faceId: 'back', gridX: 1, gridY: 2 },
-                    { faceId: 'right', gridX: 1, gridY: 3 },
-                    { faceId: 'top', gridX: 2, gridY: 1 }
-                ],
-                connections: [
-                    { from: 'bottom', to: 'left', edge: 'left' },
-                    { from: 'front', to: 'left', edge: 'top' },
-                    { from: 'back', to: 'left', edge: 'bottom' },
-                    { from: 'right', to: 'left', edge: 'right' },
-                    { from: 'top', to: 'right', edge: 'right' }
-                ],
-                gridSize: { cols: 3, rows: 4 }
-            },
-            '1-4-1-v5': {
-                name: '1-4-1型-变体5',
-                type: '1-4-1',
-                description: '前面为基准，顶部在上，底部在下，左右后方',
-                layout: [
-                    { faceId: 'top', gridX: 0, gridY: 0 },
-                    { faceId: 'left', gridX: 0, gridY: 1 },
-                    { faceId: 'front', gridX: 1, gridY: 1 },
-                    { faceId: 'right', gridX: 2, gridY: 1 },
-                    { faceId: 'back', gridX: 3, gridY: 1 },
-                    { faceId: 'bottom', gridX: 0, gridY: 2 }
-                ],
-                connections: [
-                    { from: 'top', to: 'left', edge: 'top' },
-                    { from: 'left', to: 'front', edge: 'right' },
-                    { from: 'front', to: 'right', edge: 'right' },
-                    { from: 'right', to: 'back', edge: 'right' },
-                    { from: 'bottom', to: 'left', edge: 'bottom' }
-                ],
-                gridSize: { cols: 4, rows: 3 }
-            },
-            '1-4-1-v6': {
-                name: '1-4-1型-变体6',
-                type: '1-4-1',
-                description: '前面为基准，底部在上，顶部在下，右左后方',
-                layout: [
-                    { faceId: 'bottom', gridX: 0, gridY: 0 },
-                    { faceId: 'right', gridX: 0, gridY: 1 },
-                    { faceId: 'front', gridX: 1, gridY: 1 },
-                    { faceId: 'left', gridX: 2, gridY: 1 },
-                    { faceId: 'back', gridX: 3, gridY: 1 },
-                    { faceId: 'top', gridX: 0, gridY: 2 }
-                ],
-                connections: [
-                    { from: 'bottom', to: 'right', edge: 'top' },
-                    { from: 'right', to: 'front', edge: 'right' },
-                    { from: 'front', to: 'left', edge: 'right' },
-                    { from: 'left', to: 'back', edge: 'right' },
-                    { from: 'top', to: 'right', edge: 'bottom' }
-                ],
-                gridSize: { cols: 4, rows: 3 }
-            },
 
-            // 2-3-1型 (3种变体)
-            '2-3-1-v1': {
-                name: '2-3-1型-变体1',
+            // 2-3-1型
+            '2-3-1': {
+                name: '2-3-1型',
                 type: '2-3-1',
-                description: '上下两行，上行2面，下行3面，最后1面延伸',
+                description: '左面旋转，上行2面，下行3面，延伸1面',
                 layout: [
-                    { faceId: 'top', gridX: 0, gridY: 0 },
-                    { faceId: 'left', gridX: 1, gridY: 0 },
+                    { faceId: 'left', gridX: 0, gridY: 0, initialRotation: 90 },  // 左面：顺时针90°
+                    { faceId: 'top', gridX: 1, gridY: 0 },
                     { faceId: 'front', gridX: 0, gridY: 1 },
                     { faceId: 'right', gridX: 1, gridY: 1 },
                     { faceId: 'back', gridX: 2, gridY: 1 },
-                    { faceId: 'bottom', gridX: 3, gridY: 1 }
+                    { faceId: 'bottom', gridX: 1, gridY: 2 }
                 ],
                 connections: [
-                    { from: 'top', to: 'front', edge: 'bottom' },
                     { from: 'left', to: 'top', edge: 'right' },
+                    { from: 'top', to: 'right', edge: 'bottom' },
+                    { from: 'left', to: 'front', edge: 'bottom' },
                     { from: 'front', to: 'right', edge: 'right' },
                     { from: 'right', to: 'back', edge: 'right' },
-                    { from: 'back', to: 'bottom', edge: 'right' }
+                    { from: 'bottom', to: 'front', edge: 'bottom' }
                 ],
-                gridSize: { cols: 4, rows: 2 }
-            },
-            '2-3-1-v2': {
-                name: '2-3-1型-变体2',
-                type: '2-3-1',
-                description: 'T型结构，上3下2加延伸',
-                layout: [
-                    { faceId: 'back', gridX: 0, gridY: 0 },
-                    { faceId: 'top', gridX: 1, gridY: 0 },
-                    { faceId: 'front', gridX: 2, gridY: 0 },
-                    { faceId: 'left', gridX: 0, gridY: 1 },
-                    { faceId: 'bottom', gridX: 1, gridY: 1 },
-                    { faceId: 'right', gridX: 2, gridY: 1 }
-                ],
-                connections: [
-                    { from: 'back', to: 'left', edge: 'bottom' },
-                    { from: 'top', to: 'bottom', edge: 'bottom' },
-                    { from: 'front', to: 'right', edge: 'bottom' },
-                    { from: 'left', to: 'bottom', edge: 'right' },
-                    { from: 'bottom', to: 'right', edge: 'right' }
-                ],
-                gridSize: { cols: 3, rows: 2 }
-            },
-            '2-3-1-v3': {
-                name: '2-3-1型-变体3',
-                type: '2-3-1',
-                description: 'L型结构',
-                layout: [
-                    { faceId: 'left', gridX: 0, gridY: 0 },
-                    { faceId: 'top', gridX: 1, gridY: 0 },
-                    { faceId: 'back', gridX: 2, gridY: 0 },
-                    { faceId: 'front', gridX: 0, gridY: 1 },
-                    { faceId: 'right', gridX: 1, gridY: 1 },
-                    { faceId: 'bottom', gridX: 2, gridY: 1 }
-                ],
-                connections: [
-                    { from: 'left', to: 'front', edge: 'bottom' },
-                    { from: 'top', to: 'left', edge: 'right' },
-                    { from: 'top', to: 'right', edge: 'bottom' },
-                    { from: 'back', to: 'top', edge: 'right' },
-                    { from: 'back', to: 'bottom', edge: 'bottom' }
-                ],
-                gridSize: { cols: 3, rows: 2 }
+                gridSize: { cols: 3, rows: 3 }
             },
 
             // 3-3型
@@ -1191,23 +1045,21 @@
                 type: '3-3',
                 description: '两行各三面，阶梯排列',
                 layout: [
-                    { faceId: 'top', gridX: 0, gridY: 0 },
-                    { faceId: 'back', gridX: 1, gridY: 0 },
-                    { faceId: 'right', gridX: 2, gridY: 0 },
-                    { faceId: 'left', gridX: 0, gridY: 1 },
-                    { faceId: 'front', gridX: 1, gridY: 1 },
-                    { faceId: 'bottom', gridX: 2, gridY: 1 }
+                    { faceId: 'bottom', gridX: 0, gridY: 0, initialRotation: 180 }, // 底面：顺时针180°
+                    { faceId: 'left', gridX: 1, gridY: 0, initialRotation: 90 },    // 左面：顺时针90°
+                    { faceId: 'top', gridX: 2, gridY: 0 },
+                    { faceId: 'front', gridX: 2, gridY: 1 },
+                    { faceId: 'right', gridX: 3, gridY: 1 },
+                    { faceId: 'back', gridX: 4, gridY: 1 }
                 ],
                 connections: [
-                    { from: 'top', to: 'back', edge: 'right' },
-                    { from: 'back', to: 'right', edge: 'right' },
-                    { from: 'top', to: 'left', edge: 'bottom' },
-                    { from: 'back', to: 'front', edge: 'bottom' },
-                    { from: 'right', to: 'bottom', edge: 'bottom' },
-                    { from: 'left', to: 'front', edge: 'right' },
-                    { from: 'front', to: 'bottom', edge: 'right' }
+                    { from: 'bottom', to: 'left', edge: 'right' },
+                    { from: 'left', to: 'top', edge: 'right' },
+                    { from: 'top', to: 'front', edge: 'bottom' },
+                    { from: 'front', to: 'right', edge: 'right' },
+                    { from: 'right', to: 'back', edge: 'right' }
                 ],
-                gridSize: { cols: 3, rows: 2 }
+                gridSize: { cols: 5, rows: 2 }
             },
 
             // 2-2-2型
@@ -1216,29 +1068,29 @@
                 type: '2-2-2',
                 description: '三行各两面，Z型排列',
                 layout: [
-                    { faceId: 'top', gridX: 0, gridY: 0 },
-                    { faceId: 'back', gridX: 1, gridY: 0 },
-                    { faceId: 'left', gridX: 0, gridY: 1 },
+                    { faceId: 'left', gridX: 0, gridY: 0, initialRotation: 90 },    // 左面：顺时针90°
+                    { faceId: 'top', gridX: 1, gridY: 0 },
                     { faceId: 'front', gridX: 1, gridY: 1 },
-                    { faceId: 'bottom', gridX: 0, gridY: 2 },
-                    { faceId: 'right', gridX: 1, gridY: 2 }
+                    { faceId: 'right', gridX: 2, gridY: 1 },
+                    { faceId: 'bottom', gridX: 1, gridY: 2, initialRotation: -90 }, // 底面：逆时针90°
+                    { faceId: 'back', gridX: 2, gridY: 2, initialRotation: 90 }     // 后面：顺时针90°
                 ],
                 connections: [
-                    { from: 'top', to: 'back', edge: 'right' },
-                    { from: 'top', to: 'left', edge: 'bottom' },
-                    { from: 'back', to: 'front', edge: 'bottom' },
-                    { from: 'left', to: 'bottom', edge: 'bottom' },
-                    { from: 'front', to: 'right', edge: 'bottom' },
-                    { from: 'bottom', to: 'right', edge: 'right' }
+                    { from: 'left', to: 'top', edge: 'right' },
+                    { from: 'top', to: 'front', edge: 'bottom' },
+                    { from: 'front', to: 'right', edge: 'right' },
+                    { from: 'right', to: 'back', edge: 'bottom' },
+                    { from: 'front', to: 'bottom', edge: 'bottom' },
+                    { from: 'bottom', to: 'back', edge: 'right' }
                 ],
-                gridSize: { cols: 2, rows: 3 }
+                gridSize: { cols: 3, rows: 3 }
             }
         };
 
         // 展开图类型列表
         const NET_TYPE_LIST = [
-            { id: '1-4-1', name: '1-4-1型', variants: ['1-4-1-v1', '1-4-1-v2', '1-4-1-v3', '1-4-1-v4', '1-4-1-v5', '1-4-1-v6'] },
-            { id: '2-3-1', name: '2-3-1型', variants: ['2-3-1-v1', '2-3-1-v2', '2-3-1-v3'] },
+            { id: '1-4-1', name: '1-4-1型', variants: ['1-4-1'] },
+            { id: '2-3-1', name: '2-3-1型', variants: ['2-3-1'] },
             { id: '3-3', name: '3-3型', variants: ['3-3'] },
             { id: '2-2-2', name: '2-2-2型', variants: ['2-2-2'] }
         ];
@@ -1249,14 +1101,15 @@
 
         /**
          * 初始化面数据
-         * 每个面包含: id, name, pattern, rotation, color
+         * 每个面包含: id, name, pattern, rotation, initialRotation, color
          */
         function initFaceData() {
             faceData = faceIds.map((id, index) => ({
                 id: id,
                 name: faceNames[index],
                 pattern: null,        // 当前图案
-                rotation: 0,          // 图案旋转角度
+                rotation: 0,          // 移面操作的累积旋转
+                initialRotation: 0,   // 布局定义的初始旋转 [新增]
                 color: DEFAULT_FACE_COLORS[index],
                 elements: []          // 绘制的元素列表
             }));
@@ -1467,8 +1320,16 @@
                 const faceIndex = faceIds.indexOf(item.faceId);
                 if (faceIndex === -1) return;
 
+                const faceInfo = faceData[faceIndex];
                 const element = faceElements[faceIndex];
                 if (!element) return;
+
+                // 同步初始旋转 [新增]
+                if (item.initialRotation !== undefined) {
+                    faceInfo.initialRotation = item.initialRotation;
+                } else {
+                    faceInfo.initialRotation = 0;
+                }
 
                 const x = startX + (item.gridX - minX) * FACE_SIZE;
                 const y = startY + (item.gridY - minY) * FACE_SIZE;
@@ -1566,6 +1427,25 @@
             const faceInfo = faceData[faceIndex];
             const bgColor = faceInfo.color || DEFAULT_FACE_COLORS[faceIndex];
 
+            // 计算总旋转角度 [新增]
+            const totalRotation = (faceInfo.initialRotation || 0) + (faceInfo.rotation || 0);
+
+            // 应用CSS变换 [新增]
+            if (totalRotation !== 0) {
+                canvas.style.transform = `rotate(${totalRotation}deg)`;
+            } else {
+                canvas.style.transform = '';
+            }
+
+            // 同步绘图层Canvas的旋转 [新增]
+            if (element.drawCanvas) {
+                if (totalRotation !== 0) {
+                    element.drawCanvas.style.transform = `rotate(${totalRotation}deg)`;
+                } else {
+                    element.drawCanvas.style.transform = '';
+                }
+            }
+
             // 清空Canvas
             ctx.clearRect(0, 0, FACE_SIZE, FACE_SIZE);
 
@@ -1578,9 +1458,10 @@
             ctx.lineWidth = 1;
             ctx.strokeRect(0, 0, FACE_SIZE, FACE_SIZE);
 
-            // 绘制图案
+            // 绘制图案 - 3D预览不应用旋转，图案保持正立
             if (faceInfo.pattern) {
-                drawPattern(ctx, faceInfo.pattern, faceInfo.rotation || 0, bgColor);
+                // 2D显示：图案保持正立（旋转由CSS处理）
+                drawPattern(ctx, faceInfo.pattern, 0, bgColor);
             }
 
             // 更新3D纹理
@@ -2122,6 +2003,13 @@
             el.drawCtx = drawCanvas.getContext('2d');
             el.mainCanvas = mainCanvas;
             el.mainCtx = mainCanvas.getContext('2d');
+
+            // 同步绘图层Canvas的旋转 [新增]
+            const faceInfo = faceData[faceIndex];
+            const totalRotation = (faceInfo.initialRotation || 0) + (faceInfo.rotation || 0);
+            if (totalRotation !== 0) {
+                drawCanvas.style.transform = `rotate(${totalRotation}deg)`;
+            }
 
             // 绑定鼠标事件
             drawCanvas.addEventListener('mousedown', (e) => {
@@ -3435,6 +3323,11 @@
             const structure = NET_STRUCTURES[typeInfo.variants[0]];
             currentNetLayout = JSON.parse(JSON.stringify(structure));
 
+            // 切换展开图类型时重置rotation为0，但保留新的initialRotation
+            faceData.forEach(face => {
+                face.rotation = 0;
+            });
+
             // 更新面位置
             renderNet();
 
@@ -3813,11 +3706,135 @@
         }
 
         /**
-         * 执行移面操作
+         * 查找指定Y坐标行的水平连排
+         * @param {Array} layout - 布局数组
+         * @param {number} targetY - 目标Y坐标
+         * @returns {Object|null} 连排信息 {faceIds: string[], minX: number, maxX: number}
+         */
+        function findHorizontalLineAtY(layout, targetY) {
+            // 获取该行的所有面
+            const rowFaces = layout.filter(item => item.gridY === targetY);
+            if (rowFaces.length < 2) return null; // 单个面不算连排
+
+            // 按X坐标排序
+            rowFaces.sort((a, b) => a.gridX - b.gridX);
+
+            // 检查是否连续
+            for (let i = 1; i < rowFaces.length; i++) {
+                if (rowFaces[i].gridX - rowFaces[i-1].gridX !== 1) {
+                    return null; // 不连续，不是连排
+                }
+            }
+
+            return {
+                faceIds: rowFaces.map(f => f.faceId),
+                minX: rowFaces[0].gridX,
+                maxX: rowFaces[rowFaces.length - 1].gridX,
+                y: targetY
+            };
+        }
+
+        /**
+         * 查找指定X坐标列的垂直连排
+         * @param {Array} layout - 布局数组
+         * @param {number} targetX - 目标X坐标
+         * @returns {Object|null} 连排信息 {faceIds: string[], minY: number, maxY: number}
+         */
+        function findVerticalLineAtX(layout, targetX) {
+            // 获取该列的所有面
+            const colFaces = layout.filter(item => item.gridX === targetX);
+            if (colFaces.length < 2) return null; // 单个面不算连排
+
+            // 按Y坐标排序
+            colFaces.sort((a, b) => a.gridY - b.gridY);
+
+            // 检查是否连续
+            for (let i = 1; i < colFaces.length; i++) {
+                if (colFaces[i].gridY - colFaces[i-1].gridY !== 1) {
+                    return null; // 不连续，不是连排
+                }
+            }
+
+            return {
+                faceIds: colFaces.map(f => f.faceId),
+                minY: colFaces[0].gridY,
+                maxY: colFaces[colFaces.length - 1].gridY,
+                x: targetX
+            };
+        }
+
+        /**
+         * 计算滚动移面时的旋转角度
+         *
+         * 旋转规则（根据需改进.md文档）：
+         * 横向移动（左/右方向）：
+         * - 连排上方的面：右移=顺时针90°，左移=逆时针90°
+         * - 连排下方的面：右移=逆时针90°，左移=顺时针90°
+         *
+         * 纵向移动（上/下方向）：
+         * - 连排左方的面：上移=顺时针90°，下移=逆时针90°
+         * - 连排右方的面：上移=逆时针90°，下移=顺时针90°
+         *
          * @param {number} faceIndex - 面索引
          * @param {string} direction - 移动方向
+         * @param {Object} targetPos - 目标位置 {gridX, gridY}
+         * @returns {number} 旋转角度变化 (正值顺时针，负值逆时针)
          */
-        function executeMove(faceIndex, direction) {
+        function calculateRollRotation(faceIndex, direction, targetPos) {
+            if (!currentNetLayout || !currentNetLayout.layout) return 0;
+
+            const layout = currentNetLayout.layout;
+            const faceId = faceIds[faceIndex];
+            const fromItem = layout.find(item => item.faceId === faceId);
+
+            if (!fromItem) return 0;
+
+            const { gridX, gridY } = fromItem;
+
+            // 左右移动时：检查当前是否在连排的上方或下方
+            if (direction === MOVE_DIRECTIONS.LEFT || direction === MOVE_DIRECTIONS.RIGHT) {
+                // 检查上方相邻行是否有水平连排，且当前位置在连排的X范围内
+                const upperLine = findHorizontalLineAtY(layout, gridY - 1);
+                if (upperLine && gridX >= upperLine.minX && gridX <= upperLine.maxX) {
+                    // 当前在连排上方：右移=顺时针90°，左移=逆时针90°
+                    return direction === MOVE_DIRECTIONS.RIGHT ? 90 : -90;
+                }
+
+                // 检查下方相邻行是否有水平连排，且当前位置在连排的X范围内
+                const lowerLine = findHorizontalLineAtY(layout, gridY + 1);
+                if (lowerLine && gridX >= lowerLine.minX && gridX <= lowerLine.maxX) {
+                    // 当前在连排下方：右移=逆时针90°，左移=顺时针90°
+                    return direction === MOVE_DIRECTIONS.RIGHT ? -90 : 90;
+                }
+            }
+
+            // 上下移动时：检查当前是否在连排的左方或右方
+            if (direction === MOVE_DIRECTIONS.UP || direction === MOVE_DIRECTIONS.DOWN) {
+                // 检查左方相邻列是否有垂直连排，且当前位置在连排的Y范围内
+                const leftLine = findVerticalLineAtX(layout, gridX - 1);
+                if (leftLine && gridY >= leftLine.minY && gridY <= leftLine.maxY) {
+                    // 当前在连排左方：上移=顺时针90°，下移=逆时针90°
+                    return direction === MOVE_DIRECTIONS.UP ? 90 : -90;
+                }
+
+                // 检查右方相邻列是否有垂直连排，且当前位置在连排的Y范围内
+                const rightLine = findVerticalLineAtX(layout, gridX + 1);
+                if (rightLine && gridY >= rightLine.minY && gridY <= rightLine.maxY) {
+                    // 当前在连排右方：上移=逆时针90°，下移=顺时针90°
+                    return direction === MOVE_DIRECTIONS.UP ? -90 : 90;
+                }
+            }
+
+            return 0;
+        }
+
+        /**
+         * 滚动移面操作（带正确旋转逻辑）
+         * @param {number} faceIndex - 面索引
+         * @param {string} direction - 移动方向
+         * @returns {boolean} 是否成功
+         */
+        function scrollFace(faceIndex, direction) {
             const moveInfo = isValidMove(faceIndex, direction);
             if (!moveInfo.valid) {
                 showTooltip('无法移动: ' + moveInfo.reason, 2000);
@@ -3836,30 +3853,17 @@
             const toX = moveInfo.targetPos.gridX;
             const toY = moveInfo.targetPos.gridY;
 
-            // 计算旋转角度（垂直滚动移面需要旋转）
+            // 计算旋转角度（使用正确的逻辑）
             let rotationChange = 0;
             if (moveInfo.type === 'scroll') {
-                if (direction === MOVE_DIRECTIONS.UP) {
-                    rotationChange = 90;  // 向上滚动，图案顺时针旋转90°
-                } else if (direction === MOVE_DIRECTIONS.DOWN) {
-                    rotationChange = -90;  // 向下滚动，图案逆时针旋转90°
-                }
+                rotationChange = calculateRollRotation(faceIndex, direction, moveInfo.targetPos);
             }
 
-            // 执行动画
+            // 执行动画（旋转更新在animateFaceMove的onComplete中处理）
             animateFaceMove(faceIndex, fromX, fromY, toX, toY, rotationChange, () => {
                 // 更新布局
                 layoutItem.gridX = toX;
                 layoutItem.gridY = toY;
-
-                // 更新图案旋转
-                if (rotationChange !== 0) {
-                    const faceInfo = faceData[faceIndex];
-                    if (faceInfo) {
-                        faceInfo.rotation = (faceInfo.rotation + rotationChange + 360) % 360;
-                        renderFaceContent(faceIndex);
-                    }
-                }
 
                 // 重新渲染展开图
                 renderNet();
@@ -3876,13 +3880,23 @@
         }
 
         /**
+         * 执行移面操作
+         * @param {number} faceIndex - 面索引
+         * @param {string} direction - 移动方向
+         */
+        function executeMove(faceIndex, direction) {
+            // 统一使用 scrollFace 函数，确保旋转逻辑一致
+            return scrollFace(faceIndex, direction);
+        }
+
+        /**
          * 动画移动面片
          * @param {number} faceIndex - 面索引
          * @param {number} fromX - 起始网格X
          * @param {number} fromY - 起始网格Y
          * @param {number} toX - 目标网格X
          * @param {number} toY - 目标网格Y
-         * @param {number} rotationChange - 旋转角度变化
+         * @param {number} rotationChange - 旋转角度变化（正值顺时针，负值逆时针）
          * @param {Function} onComplete - 完成回调
          */
         function animateFaceMove(faceIndex, fromX, fromY, toX, toY, rotationChange, onComplete) {
@@ -3904,13 +3918,33 @@
             const toPixelX = startX + (toX - bounds.minX) * FACE_SIZE;
             const toPixelY = startY + (toY - bounds.minY) * FACE_SIZE;
 
-            // 创建临时动画元素
+            // 设置动画层级
             element.style.zIndex = '100';
+
+            // 获取canvas元素用于旋转动画
+            const canvas = element.querySelector('.face-canvas');
+            const faceInfo = faceData[faceIndex];
+
+            // 计算当前总旋转
+            const currentRotation = (faceInfo.initialRotation || 0) + (faceInfo.rotation || 0);
+            const targetRotation = currentRotation + rotationChange;
 
             // 使用GSAP动画
             const timeline = gsap.timeline({
                 onComplete: () => {
                     element.style.zIndex = '';
+                    // 动画完成后，更新rotation值
+                    faceInfo.rotation = (faceInfo.rotation + rotationChange + 360) % 360;
+                    // Canvas保持总旋转（通过CSS transform）
+                    const finalRotation = (faceInfo.initialRotation || 0) + faceInfo.rotation;
+                    if (canvas) {
+                        gsap.set(canvas, { rotation: 0 });
+                        canvas.style.transform = `rotate(${finalRotation}deg)`;
+                    }
+                    // 同步绘图层Canvas
+                    if (element.drawCanvas) {
+                        element.drawCanvas.style.transform = `rotate(${finalRotation}deg)`;
+                    }
                     if (onComplete) onComplete();
                 }
             });
@@ -3923,16 +3957,17 @@
                 ease: 'power2.out'
             });
 
-            // 旋转动画（如果有）
-            if (rotationChange !== 0) {
-                const canvas = element.querySelector('.face-canvas');
-                if (canvas) {
-                    timeline.to(canvas, {
-                        rotation: rotationChange,
-                        duration: 0.4,
-                        ease: 'power2.out'
-                    }, 0);
-                }
+            // 旋转动画（如果有）- 使用GSAP动画实现平滑旋转
+            if (rotationChange !== 0 && canvas) {
+                // 先清除CSS transform，让GSAP控制旋转
+                canvas.style.transform = '';
+                // 从当前角度开始，动画到目标角度
+                gsap.set(canvas, { rotation: currentRotation });
+                timeline.to(canvas, {
+                    rotation: targetRotation,
+                    duration: 0.4,
+                    ease: 'power2.out'
+                }, 0); // 同时进行位置和旋转动画
             }
         }
 
@@ -4030,10 +4065,10 @@
                 indicator.style.transform = indicator.style.transform.replace('scale(1.2) ', '');
             });
 
-            // 点击事件
+            // 点击事件 - 使用scrollFace确保旋转逻辑一致
             indicator.addEventListener('click', (e) => {
                 e.stopPropagation();
-                executeMove(faceIndex, direction);
+                scrollFace(faceIndex, direction);
             });
 
             element.appendChild(indicator);
@@ -4146,7 +4181,12 @@
 
             if (typeInfo && typeInfo.variants.length > 0) {
                 currentNetLayout = JSON.parse(JSON.stringify(NET_STRUCTURES[typeInfo.variants[0]]));
+                // 重置rotation为0
+                faceData.forEach(face => {
+                    face.rotation = 0;
+                });
                 renderNet();
+                updateAllTextures();
                 showTooltip('已重置展开图', 1500);
             }
         }
