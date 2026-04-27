@@ -7277,6 +7277,9 @@ class Shape3DViewer {
       exitDeformationMode() {
           this.showTooltip('退出变形编辑模式', 1500);
 
+          // 重置状态
+          this.deformationMode = false;
+
           // 清除可视化
           this.clearDeformationVisuals();
 
@@ -7516,6 +7519,9 @@ class Shape3DViewer {
           const center = this.getSelectionCenter();
           this.deformDummy.position.copy(center);
 
+          // 保存选中中心，用于变换计算
+          this.lastSelectionCenter = center.clone();
+
           if (this.deformTransformControls) {
               this.deformTransformControls.attach(this.deformDummy);
           }
@@ -7640,8 +7646,8 @@ class Shape3DViewer {
           const affectedVertices = this.getAffectedVertices();
           const beforeState = this.saveVertexState(affectedVertices);
 
-          const center = this.lastSelectionCenter || new THREE.Vector3();
-          this.lastSelectionCenter = center.clone();
+          // 使用保存的选中中心计算位移
+          const center = this.lastSelectionCenter ? this.lastSelectionCenter.clone() : new THREE.Vector3();
 
           switch (mode) {
               case 'translate':
@@ -7663,8 +7669,10 @@ class Shape3DViewer {
           );
           this.deformationHistory.push(entry);
 
+          // 更新选中中心为新位置
+          this.lastSelectionCenter = transformObject.position.clone();
+
           this.updateDeformationVisuals();
-          this.updateDeformDummyAndAttach();
       }
 
       getAffectedVertices() {
@@ -7740,7 +7748,12 @@ class Shape3DViewer {
           const pos = geometry.attributes.position;
           const affected = this.getAffectedVertices();
 
-          const delta = dummy.position.clone().sub(center);
+          // 计算世界坐标位移
+          const deltaWorld = dummy.position.clone().sub(center);
+
+          // 转换到局部坐标位移
+          const invMatrix = this.selectedShape.matrixWorld.clone().invert();
+          const deltaLocal = deltaWorld.clone().transformDirection(invMatrix);
 
           for (const index of affected) {
               const v = new THREE.Vector3().fromBufferAttribute(pos, index);
@@ -7750,7 +7763,7 @@ class Shape3DViewer {
                   weight = this.getSoftSelectWeight(v, center);
               }
 
-              v.add(delta.clone().multiplyScalar(weight));
+              v.add(deltaLocal.clone().multiplyScalar(weight));
               pos.setXYZ(index, v.x, v.y, v.z);
           }
 
