@@ -3,18 +3,126 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>六面体展开图</title>
+    <title>六面体展开图训练器</title>
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- Three.js r128 -->
-    <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
-    <!-- OrbitControls -->
-    <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- 本地库优先加载器 -->
+    <script>
+        // 库加载配置：本地路径优先，CDN作为后备
+        const LIBRARY_CONFIG = {
+            three: {
+                local: 'libs/three/three.min.js',
+                cdn: 'https://unpkg.com/three@0.128.0/build/three.min.js',
+                global: 'THREE',
+                loaded: false
+            },
+            orbitControls: {
+                local: 'libs/three/OrbitControls.js',
+                cdn: 'https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js',
+                global: 'THREE.OrbitControls',
+                depends: 'three',
+                loaded: false
+            },
+            gsap: {
+                local: 'libs/gsap/gsap.min.js',
+                cdn: 'https://unpkg.com/gsap@3.12.2/dist/gsap.min.js',
+                global: 'gsap',
+                loaded: false
+            }
+        };
 
-    <!-- GSAP 3.12.2 -->
-    <script src="https://unpkg.com/gsap@3.12.2/dist/gsap.min.js"></script>
+        // 动态加载脚本
+        function loadScript(url) {
+            return new Promise((resolve) => {
+                const script = document.createElement('script');
+                script.src = url;
+                script.onload = () => {
+                    console.log(`[库加载] 成功: ${url}`);
+                    resolve(true);
+                };
+                script.onerror = () => {
+                    console.warn(`[库加载] 失败: ${url}`);
+                    resolve(false);
+                };
+                document.head.appendChild(script);
+            });
+        }
+
+        // 检查全局对象是否存在
+        function checkGlobalObject(path) {
+            try {
+                const parts = path.split('.');
+                let obj = window;
+                for (const part of parts) {
+                    if (obj[part] === undefined) return false;
+                    obj = obj[part];
+                }
+                return true;
+            } catch {
+                return false;
+            }
+        }
+
+        // 加载单个库（优先本地）
+        async function loadLibrary(name) {
+            const config = LIBRARY_CONFIG[name];
+            if (!config) return false;
+
+            // 如果已加载，直接返回
+            if (checkGlobalObject(config.global)) {
+                config.loaded = true;
+                return true;
+            }
+
+            // 如果有依赖，先加载依赖
+            if (config.depends) {
+                await loadLibrary(config.depends);
+            }
+
+            // 先尝试加载本地文件
+            console.log(`[库加载] ${name}: 尝试加载本地库...`);
+            const localSuccess = await loadScript(config.local);
+
+            if (localSuccess && checkGlobalObject(config.global)) {
+                console.log(`[库加载] ${name}: ✓ 使用本地库`);
+                config.loaded = true;
+                return true;
+            }
+
+            // 本地加载失败，使用CDN作为后备
+            console.log(`[库加载] ${name}: 本地加载失败，使用CDN后备...`);
+            const cdnSuccess = await loadScript(config.cdn);
+
+            if (cdnSuccess && checkGlobalObject(config.global)) {
+                console.log(`[库加载] ${name}: ✓ 使用CDN库`);
+                config.loaded = true;
+                return true;
+            }
+
+            console.error(`[库加载] ${name}: ✗ 加载失败`);
+            return false;
+        }
+
+        // 加载所有库
+        async function loadAllLibraries() {
+            console.log('=== 开始加载库文件 ===');
+
+            // 按顺序加载
+            await loadLibrary('three');
+            await loadLibrary('orbitControls');
+            await loadLibrary('gsap');
+
+            console.log('=== 库加载完成 ===');
+
+            // 触发自定义事件，通知库已加载完成
+            window.dispatchEvent(new CustomEvent('librariesLoaded'));
+        }
+
+        // 开始加载
+        loadAllLibraries();
+    </script>
 
     <!-- Noto Sans SC 字体 -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
@@ -556,6 +664,18 @@
                         </svg>
                         橡皮
                     </button>
+                    <button class="tool-btn justify-center" data-tool="line" title="直线">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="5" y1="19" x2="19" y2="5"/>
+                        </svg>
+                        直线
+                    </button>
+                    <button class="tool-btn justify-center" data-tool="curve" title="曲线">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 17c3-6 8-10 18-10"/>
+                        </svg>
+                        曲线
+                    </button>
                 </div>
 
                 <!-- 画笔大小 -->
@@ -588,6 +708,16 @@
                         <button class="w-6 h-6 rounded border border-white/20" data-face-color="#a855f7" style="background: #a855f7;" title="紫色"></button>
                         <button class="w-6 h-6 rounded border border-white/20" data-face-color="#f97316" style="background: #f97316;" title="橙色"></button>
                     </div>
+                    <!-- 自定义颜色选择器 -->
+                    <div class="mt-2 flex items-center gap-2">
+                        <input type="color" id="customFaceColor" value="#ffffff" class="w-8 h-8 rounded cursor-pointer border-0 bg-transparent" title="自定义颜色">
+                        <span class="text-xs text-gray-400">自定义</span>
+                    </div>
+                    <!-- 透明度滑块 -->
+                    <div class="mt-2">
+                        <label class="text-xs text-gray-400 mb-1 block">透明度: <span id="faceOpacityLabel">100</span>%</label>
+                        <input type="range" id="faceOpacity" min="0" max="100" value="100" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                    </div>
                 </div>
 
                 <!-- 操作按钮 -->
@@ -614,6 +744,29 @@
                             <circle cx="12" cy="12" r="1.5" fill="currentColor"/>
                         </svg>
                     </button>
+                </div>
+
+                <!-- 随机生成选项 -->
+                <div class="mt-2 p-2 bg-black/20 rounded-lg">
+                    <label class="text-xs text-gray-400 mb-1 block">随机生成选项</label>
+                    <div class="flex flex-wrap gap-2">
+                        <label class="flex items-center gap-1 text-xs text-gray-300 cursor-pointer">
+                            <input type="checkbox" id="randomPattern" checked class="w-3 h-3 accent-blue-500">
+                            <span>图案</span>
+                        </label>
+                        <label class="flex items-center gap-1 text-xs text-gray-300 cursor-pointer">
+                            <input type="checkbox" id="randomPatternColor" checked class="w-3 h-3 accent-blue-500">
+                            <span>图案颜色</span>
+                        </label>
+                        <label class="flex items-center gap-1 text-xs text-gray-300 cursor-pointer">
+                            <input type="checkbox" id="randomFaceColor" class="w-3 h-3 accent-blue-500">
+                            <span>面颜色</span>
+                        </label>
+                        <label class="flex items-center gap-1 text-xs text-gray-300 cursor-pointer">
+                            <input type="checkbox" id="randomRotation" class="w-3 h-3 accent-blue-500">
+                            <span>旋转角度</span>
+                        </label>
+                    </div>
                 </div>
             </section>
 
@@ -699,6 +852,39 @@
                     <button class="pattern-btn" data-pattern="line-d" title="斜线">
                         <span>/</span>
                     </button>
+                </div>
+            </section>
+
+            <div class="divider"></div>
+
+            <!-- 配置保存/加载 -->
+            <section>
+                <h3 class="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                        <polyline points="17 21 17 13 7 13 7 21"/>
+                        <polyline points="7 3 7 8 15 8"/>
+                    </svg>
+                    配置保存/加载
+                </h3>
+                <div class="space-y-2">
+                    <button class="tool-btn w-full justify-center" id="saveConfigBtn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                            <polyline points="17 21 17 13 7 13 7 21"/>
+                            <polyline points="7 3 7 8 15 8"/>
+                        </svg>
+                        保存配置
+                    </button>
+                    <button class="tool-btn w-full justify-center" id="loadConfigBtn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        加载配置
+                    </button>
+                    <input type="file" id="configFileInput" accept=".json" style="display: none;">
                 </div>
             </section>
         </aside>
@@ -903,10 +1089,14 @@
         let currentFaceIndex = 0;
 
         // 当前工具状态（null表示未选中任何工具）
-        let currentTool = null; // 'brush' 或 'eraser' 或 null
+        let currentTool = null; // 'brush' 或 'eraser' 或 'line' 或 'curve' 或 null
         let brushColor = '#000000';
         let brushSize = 5;
         let patternRotation = 0;
+
+        // 直线绘制状态
+        let lineStartPoint = null; // 直线起点
+        let tempLineCanvas = null; // 临时Canvas用于直线预览
 
         // 面数据
         const faceNames = ['前', '后', '右', '左', '上', '下'];
@@ -1103,7 +1293,7 @@
 
         /**
          * 初始化面数据
-         * 每个面包含: id, name, pattern, rotation, initialRotation, color, drawingData
+         * 每个面包含: id, name, pattern, rotation, initialRotation, color, opacity, drawingData
          */
         function initFaceData() {
             faceData = faceIds.map((id, index) => ({
@@ -1114,6 +1304,7 @@
                 rotation: 0,          // 移面操作的累积旋转
                 initialRotation: 0,   // 布局定义的初始旋转 [新增]
                 color: DEFAULT_FACE_COLORS[index],
+                opacity: 1.0,         // 面透明度 (0-1) [新增]
                 elements: []          // 绘制的元素列表
             }));
 
@@ -1575,6 +1766,7 @@
             const ctx = element.mainCtx;
             const faceInfo = faceData[faceIndex];
             const bgColor = faceInfo.color || DEFAULT_FACE_COLORS[faceIndex];
+            const opacity = faceInfo.opacity !== undefined ? faceInfo.opacity : 1.0;
 
             // 计算总旋转角度
             const totalRotation = (faceInfo.initialRotation || 0) + (faceInfo.rotation || 0);
@@ -1598,9 +1790,11 @@
             // 清空主Canvas（背景层+图案层）
             ctx.clearRect(0, 0, FACE_SIZE, FACE_SIZE);
 
-            // 绘制背景色
+            // 绘制背景色（带透明度）
+            ctx.globalAlpha = opacity;
             ctx.fillStyle = bgColor;
             ctx.fillRect(0, 0, FACE_SIZE, FACE_SIZE);
+            ctx.globalAlpha = 1.0;
 
             // 绘制边框
             ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
@@ -2093,6 +2287,7 @@
 
         /**
          * 随机生成图案
+         * 根据复选框选项决定随机哪些属性
          */
         function randomizePatterns() {
             const patterns = [
@@ -2102,18 +2297,46 @@
                 'dot-1', 'dot-2', 'dot-3', 'dot-4', 'dot-5', 'dot-6'
             ];
 
+            // 随机颜色池
+            const randomColors = [
+                '#000000', '#ffffff', '#ef4444', '#3b82f6',
+                '#22c55e', '#eab308', '#a855f7', '#f97316',
+                '#ec4899', '#14b8a6', '#6b7280', '#8b4513'
+            ];
+
+            // 随机旋转角度
+            const rotations = [0, 90, 180, 270];
+
+            // 读取复选框状态
+            const randomPattern = document.getElementById('randomPattern')?.checked ?? true;
+            const randomPatternColor = document.getElementById('randomPatternColor')?.checked ?? true;
+            const randomFaceColor = document.getElementById('randomFaceColor')?.checked ?? true;
+            const randomRotation = document.getElementById('randomRotation')?.checked ?? false;
+
             saveToHistory();
             faceData.forEach(face => {
-                if (Math.random() > 0.3) { // 70%概率有图案
+                // 随机图案
+                if (randomPattern) {
                     face.pattern = patterns[Math.floor(Math.random() * patterns.length)];
-                    face.rotation = [0, 90, 180, 270][Math.floor(Math.random() * 4)];
-                } else {
-                    face.pattern = null;
-                    face.rotation = 0;
+                }
+
+                // 随机图案颜色
+                if (randomPatternColor) {
+                    face.patternColor = randomColors[Math.floor(Math.random() * randomColors.length)];
+                }
+
+                // 随机面颜色
+                if (randomFaceColor) {
+                    face.color = randomColors[Math.floor(Math.random() * randomColors.length)];
+                }
+
+                // 随机旋转角度
+                if (randomRotation) {
+                    face.rotation = rotations[Math.floor(Math.random() * rotations.length)];
                 }
             });
             updateAllTextures();
-            showTooltip('已随机生成图案', 1500);
+            showTooltip('已随机生成', 1500);
         }
 
         /**
@@ -2247,6 +2470,22 @@
                 eraseAt(ctx, lastDrawPoint.x, lastDrawPoint.y, brushSize * 2);
                 // 立即更新3D纹理
                 updateFaceTexture(faceIndex);
+            } else if (currentTool === 'line') {
+                // 直线工具：记录起点
+                lineStartPoint = lastDrawPoint;
+                // 创建临时Canvas用于预览
+                if (!tempLineCanvas) {
+                    tempLineCanvas = document.createElement('canvas');
+                    tempLineCanvas.width = FACE_SIZE;
+                    tempLineCanvas.height = FACE_SIZE;
+                }
+                // 复制当前绘图层到临时Canvas
+                const tempCtx = tempLineCanvas.getContext('2d');
+                tempCtx.clearRect(0, 0, FACE_SIZE, FACE_SIZE);
+                tempCtx.drawImage(el.drawCanvas, 0, 0);
+            } else if (currentTool === 'curve') {
+                // 曲线工具：与画笔相同，绘制起始点
+                drawDotAt(ctx, lastDrawPoint.x, lastDrawPoint.y, brushColor, brushSize);
             } else {
                 // 画笔：在绘图层上绘制
                 drawDotAt(ctx, lastDrawPoint.x, lastDrawPoint.y, brushColor, brushSize);
@@ -2278,6 +2517,30 @@
                 }
                 // 立即更新3D纹理
                 updateFaceTexture(faceIndex);
+            } else if (currentTool === 'line') {
+                // 直线工具：预览直线
+                if (lineStartPoint && tempLineCanvas) {
+                    const tempCtx = tempLineCanvas.getContext('2d');
+                    // 清空绘图层
+                    ctx.clearRect(0, 0, FACE_SIZE, FACE_SIZE);
+                    // 恢复之前的绘图内容
+                    ctx.drawImage(tempLineCanvas, 0, 0);
+                    // 绘制预览直线
+                    ctx.strokeStyle = brushColor;
+                    ctx.lineWidth = brushSize;
+                    ctx.lineCap = 'round';
+                    ctx.beginPath();
+                    ctx.moveTo(lineStartPoint.x, lineStartPoint.y);
+                    ctx.lineTo(currentPoint.x, currentPoint.y);
+                    ctx.stroke();
+                    // 更新纹理显示预览
+                    updateFaceTexture(faceIndex);
+                }
+            } else if (currentTool === 'curve') {
+                // 曲线工具：平滑曲线绘制
+                if (lastDrawPoint) {
+                    drawSmoothCurve(ctx, lastDrawPoint, currentPoint, brushColor, brushSize);
+                }
             } else {
                 // 画笔：在绘图层上绘制
                 if (lastDrawPoint) {
@@ -2300,7 +2563,14 @@
                 isDrawing = false;
                 lastDrawPoint = null;
                 drawingFaceIndex = null;
+                lineStartPoint = null;
                 return;
+            }
+
+            // 直线工具：清除临时Canvas
+            if (currentTool === 'line' && tempLineCanvas) {
+                const tempCtx = tempLineCanvas.getContext('2d');
+                tempCtx.clearRect(0, 0, FACE_SIZE, FACE_SIZE);
             }
 
             // 保存绘图层到持久化存储
@@ -2317,6 +2587,7 @@
             isDrawing = false;
             lastDrawPoint = null;
             drawingFaceIndex = null;
+            lineStartPoint = null;
         }
 
         /**
@@ -2403,6 +2674,31 @@
             ctx.beginPath();
             ctx.moveTo(from.x, from.y);
             ctx.lineTo(to.x, to.y);
+            ctx.stroke();
+        }
+
+        /**
+         * 绘制平滑曲线（使用贝塞尔曲线插值）
+         * @param {CanvasRenderingContext2D} ctx - Canvas上下文
+         * @param {Object} from - 起点 {x, y}
+         * @param {Object} to - 终点 {x, y}
+         * @param {string} color - 颜色
+         * @param {number} size - 大小
+         */
+        function drawSmoothCurve(ctx, from, to, color, size) {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = size;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            // 计算控制点（简化贝塞尔曲线）
+            const midX = (from.x + to.x) / 2;
+            const midY = (from.y + to.y) / 2;
+
+            ctx.beginPath();
+            ctx.moveTo(from.x, from.y);
+            ctx.quadraticCurveTo(from.x, from.y, midX, midY);
+            ctx.quadraticCurveTo(to.x, to.y, to.x, to.y);
             ctx.stroke();
         }
 
@@ -2634,7 +2930,33 @@
                 faceInfo.color = color;
                 renderFaceContent(currentFaceIndex);
                 updateFaceButton(currentFaceIndex);
+                // 同步更新自定义颜色选择器
+                const customColorInput = document.getElementById('customFaceColor');
+                if (customColorInput) {
+                    customColorInput.value = color;
+                }
                 showTooltip(`已更改${faceInfo.name}面颜色`, 1500);
+            }
+        }
+
+        /**
+         * 设置当前面的透明度
+         * @param {number} opacity - 透明度值 (0-100)
+         */
+        function setFaceOpacity(opacity) {
+            const faceInfo = faceData[currentFaceIndex];
+            if (faceInfo) {
+                saveToHistory();
+                faceInfo.opacity = opacity / 100; // 转换为0-1范围
+                renderFaceContent(currentFaceIndex);
+
+                // 更新UI标签
+                const opacityLabel = document.getElementById('faceOpacityLabel');
+                if (opacityLabel) {
+                    opacityLabel.textContent = opacity;
+                }
+
+                showTooltip(`${faceInfo.name}面透明度: ${opacity}%`, 1500);
             }
         }
 
@@ -2783,6 +3105,23 @@
                 document.getElementById('infoOpposite').textContent = FACE_NAME_MAP[getOppositeFace(currentFace.id)];
                 document.getElementById('infoAdjacent').textContent = getAdjacentFaces(currentFace.id)
                     .map(f => FACE_NAME_MAP[f]).join('、');
+
+                // 同步自定义颜色选择器
+                const customColorInput = document.getElementById('customFaceColor');
+                if (customColorInput && currentFace.color) {
+                    customColorInput.value = currentFace.color;
+                }
+
+                // 同步透明度滑块
+                const opacityInput = document.getElementById('faceOpacity');
+                const opacityLabel = document.getElementById('faceOpacityLabel');
+                if (opacityInput && currentFace.opacity !== undefined) {
+                    const opacityPercent = Math.round(currentFace.opacity * 100);
+                    opacityInput.value = opacityPercent;
+                    if (opacityLabel) {
+                        opacityLabel.textContent = opacityPercent;
+                    }
+                }
             }
         }
 
@@ -3490,6 +3829,22 @@
                 });
             });
 
+            // 自定义面颜色选择器
+            const customFaceColorInput = document.getElementById('customFaceColor');
+            if (customFaceColorInput) {
+                customFaceColorInput.addEventListener('input', (e) => {
+                    setFaceColor(e.target.value);
+                });
+            }
+
+            // 面透明度滑块
+            const faceOpacityInput = document.getElementById('faceOpacity');
+            if (faceOpacityInput) {
+                faceOpacityInput.addEventListener('input', (e) => {
+                    setFaceOpacity(parseInt(e.target.value));
+                });
+            }
+
             // 图案颜色选择按钮
             document.querySelectorAll('[data-pattern-color]').forEach(btn => {
                 btn.addEventListener('click', (e) => {
@@ -3505,6 +3860,29 @@
                     e.currentTarget.style.borderColor = '#3b82f6';
                 });
             });
+
+            // 配置保存按钮
+            const saveConfigBtn = document.getElementById('saveConfigBtn');
+            if (saveConfigBtn) {
+                saveConfigBtn.addEventListener('click', saveConfig);
+            }
+
+            // 配置加载按钮
+            const loadConfigBtn = document.getElementById('loadConfigBtn');
+            if (loadConfigBtn) {
+                loadConfigBtn.addEventListener('click', () => {
+                    const fileInput = document.getElementById('configFileInput');
+                    if (fileInput) {
+                        fileInput.click();
+                    }
+                });
+            }
+
+            // 配置文件选择
+            const configFileInput = document.getElementById('configFileInput');
+            if (configFileInput) {
+                configFileInput.addEventListener('change', loadConfig);
+            }
 
             // 键盘快捷键
             document.addEventListener('keydown', (e) => {
@@ -4277,6 +4655,17 @@
                     duration: 0.4,
                     ease: 'power2.out'
                 }, 0); // 同时进行位置和旋转动画
+
+                // 手绘图案层同步旋转动画
+                if (element.drawCanvas) {
+                    element.drawCanvas.style.transform = '';
+                    gsap.set(element.drawCanvas, { rotation: currentRotation });
+                    timeline.to(element.drawCanvas, {
+                        rotation: targetRotation,
+                        duration: 0.4,
+                        ease: 'power2.out'
+                    }, 0);
+                }
             }
         }
 
@@ -4509,8 +4898,173 @@
             return validateNetConnectivity(currentNetLayout.layout);
         }
 
-        // 页面加载时初始化
-        document.addEventListener('DOMContentLoaded', init);
+        // ============================================
+        // 配置保存/加载系统
+        // ============================================
+
+        /**
+         * 保存当前配置到JSON文件
+         */
+        function saveConfig() {
+            // 收集所有面数据
+            const configData = {
+                version: '1.0',
+                timestamp: new Date().toISOString(),
+                netType: currentNetLayout ? currentNetLayout.type : '1-4-1',
+                netLayout: currentNetLayout ? JSON.parse(JSON.stringify(currentNetLayout.layout)) : null,
+                faces: []
+            };
+
+            // 保存每个面的数据
+            faceIds.forEach((faceId, index) => {
+                const faceInfo = faceData[index];
+                const el = faceElements[index];
+
+                const faceConfig = {
+                    id: faceId,
+                    name: faceInfo.name,
+                    pattern: faceInfo.pattern,
+                    patternColor: faceInfo.patternColor,
+                    rotation: faceInfo.rotation,
+                    initialRotation: faceInfo.initialRotation,
+                    color: faceInfo.color,
+                    opacity: faceInfo.opacity
+                };
+
+                // 保存绘图层数据
+                if (el && el.drawCanvas) {
+                    const drawCtx = el.drawCtx;
+                    const imageData = drawCtx.getImageData(0, 0, FACE_SIZE, FACE_SIZE);
+                    // 检查是否有内容
+                    const hasContent = imageData.data.some((val, idx) => idx % 4 === 3 && val > 0);
+                    if (hasContent) {
+                        faceConfig.drawingData = el.drawCanvas.toDataURL('image/png');
+                    }
+                }
+
+                configData.faces.push(faceConfig);
+            });
+
+            // 创建Blob并下载
+            const jsonStr = JSON.stringify(configData, null, 2);
+            const blob = new Blob([jsonStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+
+            const link = document.createElement('a');
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            link.href = url;
+            link.download = `hexahedron-config-${timestamp}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            showTooltip('配置已保存', 2000);
+        }
+
+        /**
+         * 从JSON文件加载配置
+         * @param {Event} e - 文件选择事件
+         */
+        function loadConfig(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const configData = JSON.parse(event.target.result);
+
+                    // 验证配置格式
+                    if (!configData.version || !configData.faces) {
+                        throw new Error('无效的配置文件格式');
+                    }
+
+                    // 恢复展开图类型
+                    if (configData.netType) {
+                        switchNetType(configData.netType);
+                    }
+
+                    // 恢复布局（如果有）
+                    if (configData.netLayout && currentNetLayout) {
+                        currentNetLayout.layout = JSON.parse(JSON.stringify(configData.netLayout));
+                    }
+
+                    // 恢复每个面的数据
+                    configData.faces.forEach((faceConfig, index) => {
+                        const faceIndex = faceIds.indexOf(faceConfig.id);
+                        if (faceIndex === -1) return;
+
+                        const faceInfo = faceData[faceIndex];
+                        faceInfo.pattern = faceConfig.pattern || null;
+                        faceInfo.patternColor = faceConfig.patternColor || '#000000';
+                        faceInfo.rotation = faceConfig.rotation || 0;
+                        faceInfo.initialRotation = faceConfig.initialRotation || 0;
+                        faceInfo.color = faceConfig.color || DEFAULT_FACE_COLORS[faceIndex];
+                        faceInfo.opacity = faceConfig.opacity !== undefined ? faceConfig.opacity : 1.0;
+
+                        // 恢复绘图层数据
+                        if (faceConfig.drawingData) {
+                            const el = faceElements[faceIndex];
+                            if (el && el.drawCtx) {
+                                const img = new Image();
+                                img.onload = () => {
+                                    el.drawCtx.clearRect(0, 0, FACE_SIZE, FACE_SIZE);
+                                    el.drawCtx.drawImage(img, 0, 0);
+                                    // 保存到持久化存储
+                                    drawingLayerData[faceConfig.id] = faceConfig.drawingData;
+                                    // 更新纹理
+                                    renderFaceContent(faceIndex);
+                                };
+                                img.src = faceConfig.drawingData;
+                            }
+                        } else {
+                            // 清空绘图层
+                            const el = faceElements[faceIndex];
+                            if (el && el.drawCtx) {
+                                el.drawCtx.clearRect(0, 0, FACE_SIZE, FACE_SIZE);
+                                drawingLayerData[faceConfig.id] = null;
+                            }
+                        }
+                    });
+
+                    // 重新渲染
+                    renderNet();
+                    updateAllTextures();
+                    updateUI();
+
+                    showTooltip('配置已加载', 2000);
+
+                } catch (error) {
+                    console.error('加载配置失败:', error);
+                    showTooltip('加载配置失败: ' + error.message, 3000);
+                }
+            };
+
+            reader.readAsText(file);
+
+            // 清空文件输入，允许重复选择同一文件
+            e.target.value = '';
+        }
+
+        // 页面加载时初始化（等待库加载完成）
+        function initOnReady() {
+            if (LIBRARY_CONFIG.three.loaded && LIBRARY_CONFIG.gsap.loaded) {
+                init();
+            } else {
+                // 监听库加载完成事件
+                window.addEventListener('librariesLoaded', () => {
+                    init();
+                });
+            }
+        }
+
+        // 等待DOM和库都加载完成
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initOnReady);
+        } else {
+            initOnReady();
+        }
     </script>
 </body>
 </html>
