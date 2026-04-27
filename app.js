@@ -7247,6 +7247,10 @@ class Shape3DViewer {
                   this.camera,
                   this.renderer.domElement
               );
+              // 拖拽时禁用轨道控制器，避免冲突
+              this.deformTransformControls.addEventListener('dragging-changed', (event) => {
+                  this.controls.enabled = !event.value;
+              });
               this.deformTransformControls.addEventListener('objectChange', () => {
                   this.onDeformTransformChange();
               });
