@@ -9,292 +9,575 @@
         body {
             margin: 0;
             padding: 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            font-family: 'Arial', sans-serif;
+            background: #f7f6f3;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
             overflow: hidden;
+            color: #37352f;
         }
-        
+
         #container {
             position: relative;
             width: 100vw;
             height: 100vh;
         }
-        
-        #controls {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background: rgba(255, 255, 255, 0.9);
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+
+        /* 顶部标题栏 */
+        #header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: #ffffff;
+            border-bottom: 1px solid #e5e5e5;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            z-index: 200;
+        }
+
+        #header .title {
+            font-size: 14px;
+            font-weight: 500;
+            color: #37352f;
+        }
+
+        #header .help-btn {
+            background: #fff;
+            border: 1px solid #e5e5e5;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            color: #6b6b6b;
+        }
+
+        #header .help-btn:hover {
+            background: #fafafa;
+        }
+
+        /* 侧边栏 */
+        #sidebar {
+            position: fixed;
+            top: 40px;
+            left: 0;
+            bottom: 28px;
+            width: 260px;
+            background: #ffffff;
+            border-right: 1px solid #e5e5e5;
+            display: flex;
+            flex-direction: column;
             z-index: 100;
-            min-width: 250px;
-            max-height: calc(100vh - 40px);
-            overflow-y: auto;
-            overflow-x: hidden;
-            transition: all 0.3s ease;
+            transition: width 0.2s ease;
         }
-        
-        #controls.minimized {
-            width: 50px;
-            min-width: 50px;
-            padding: 10px;
-            overflow: hidden;
+
+        #sidebar.collapsed {
+            width: 40px;
         }
-        
-        #controls.minimized .control-content {
+
+        #sidebar.collapsed .tab-content,
+        #sidebar.collapsed #tabs {
             display: none;
         }
-        
-        #controls.minimized .minimize-btn {
-            right: 5px;
-            top: 5px;
+
+        #sidebar.collapsed .sidebar-icons {
+            display: flex;
         }
-        
-        .minimize-btn {
+
+        .sidebar-toggle {
             position: absolute;
-            top: 10px;
-            right: 10px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            cursor: pointer;
-            font-size: 16px;
+            right: -16px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 16px;
+            height: 48px;
+            background: #fff;
+            border: 1px solid #e5e5e5;
+            border-left: none;
+            border-radius: 0 4px 4px 0;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.2s ease;
+            cursor: pointer;
             z-index: 101;
         }
-        
-        .minimize-btn:hover {
-            background: #5a52d5;
-            transform: scale(1.1);
+
+        .sidebar-toggle:hover {
+            background: #fafafa;
         }
-        
-        .control-group {
-            margin-bottom: 15px;
+
+        .sidebar-toggle span {
+            font-size: 10px;
+            color: #9b9b9b;
         }
-        
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-            color: #333;
+
+        .sidebar-icons {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 12px;
+            gap: 8px;
         }
-        
-        select, input[type="range"], button {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 14px;
-        }
-        
-        button {
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            color: white;
-            border: none;
-            cursor: pointer;
-            margin-top: 5px;
-            transition: transform 0.2s;
-        }
-        
-        button:hover {
-            transform: translateY(-2px);
-        }
-        
-        .slider-container {
+
+        .sidebar-icons .icon-btn {
+            width: 28px;
+            height: 28px;
+            background: #fafafa;
+            border-radius: 4px;
             display: flex;
             align-items: center;
-            gap: 10px;
-        }
-        
-        .slider-value {
-            min-width: 40px;
-            text-align: center;
-            font-weight: bold;
-            color: #666;
-        }
-        
-        #info {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 10px;
-            border-radius: 5px;
+            justify-content: center;
             font-size: 12px;
-            transition: all 0.3s ease;
-            min-width: 200px;
+            cursor: pointer;
         }
-        
+
+        .sidebar-icons .icon-btn:hover {
+            background: #f0f0f0;
+        }
+
+        /* 标签页 */
+        #tabs {
+            display: flex;
+            border-bottom: 1px solid #e5e5e5;
+            background: #fafafa;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 10px 6px;
+            font-size: 12px;
+            color: #9b9b9b;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .tab-btn:hover {
+            color: #6b6b6b;
+            background: #f0f0f0;
+        }
+
+        .tab-btn.active {
+            color: #37352f;
+            border-bottom-color: #37352f;
+            background: #fff;
+        }
+
+        /* 标签页内容 */
+        .tab-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        /* 底部状态栏 */
+        #statusbar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 28px;
+            background: #ffffff;
+            border-top: 1px solid #e5e5e5;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            gap: 20px;
+            font-size: 11px;
+            color: #6b6b6b;
+            z-index: 200;
+        }
+
+        #statusbar .shortcuts {
+            display: flex;
+            gap: 20px;
+        }
+
+        #statusbar .fps {
+            margin-left: auto;
+            color: #2eaadc;
+            font-weight: 500;
+        }
+
+        /* 右侧信息面板 */
+        #info {
+            position: fixed;
+            bottom: 28px;
+            right: 0;
+            top: 40px;
+            width: 200px;
+            background: #ffffff;
+            border-left: 1px solid #e5e5e5;
+            padding: 12px;
+            font-size: 12px;
+            color: #6b6b6b;
+            z-index: 100;
+            overflow-y: auto;
+        }
+
         #info.minimized {
-            width: 50px;
-            min-width: 50px;
-            height: 50px;
-            padding: 5px;
+            width: 40px;
+            padding: 8px;
             overflow: hidden;
         }
-        
+
         #info.minimized .info-content {
             display: none;
         }
-        
-        #info.minimized .minimize-btn {
-            right: 5px;
-            top: 5px;
+
+        /* 按钮样式 */
+        button {
+            background: #ffffff;
+            color: #37352f;
+            border: 1px solid #e5e5e5;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: background 0.15s ease, border-color 0.15s ease;
         }
-        
-        #info .minimize-btn {
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
+
+        button:hover {
+            background: #fafafa;
+            border-color: #d4d4d4;
         }
-        
-        #info .minimize-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
+
+        button:active {
+            background: #f0f0f0;
         }
-        
-        .section-title {
-            color: #667eea;
-            font-size: 16px;
-            margin-bottom: 10px;
-            border-bottom: 2px solid #667eea;
-            padding-bottom: 5px;
+
+        /* 危险按钮 */
+        button.danger {
+            color: #d73a49;
+            border-color: #d73a49;
         }
-        
+
+        button.danger:hover {
+            background: #faf0f0;
+        }
+
+        /* 主要操作按钮 */
+        button.primary {
+            background: #37352f;
+            color: #ffffff;
+            border-color: #37352f;
+        }
+
+        button.primary:hover {
+            background: #2f2d2a;
+        }
+
+        /* 选择框 */
+        select {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #e5e5e5;
+            border-radius: 4px;
+            font-size: 13px;
+            background: #fff;
+            color: #37352f;
+            cursor: pointer;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #2eaadc;
+        }
+
+        /* 输入框 */
+        input[type="text"],
+        input[type="number"] {
+            width: 100%;
+            padding: 6px 10px;
+            border: 1px solid #e5e5e5;
+            border-radius: 4px;
+            font-size: 13px;
+            background: #fff;
+            color: #37352f;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #2eaadc;
+        }
+
+        /* 颜色选择器 */
+        input[type="color"] {
+            width: 40px;
+            height: 30px;
+            border: 1px solid #e5e5e5;
+            border-radius: 4px;
+            cursor: pointer;
+            padding: 2px;
+        }
+
+        /* 滑块 */
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            background: #e5e5e5;
+            border-radius: 2px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            background: #fff;
+            border: 1px solid #d4d4d4;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            border-color: #2eaadc;
+        }
+
+        /* 区块样式 */
+        .section-label {
+            font-size: 11px;
+            color: #9b9b9b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .control-section {
+            margin-bottom: 16px;
+        }
+
+        /* 图形列表项 */
         .shape-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 5px;
-            margin: 2px 0;
-            background: #f0f0f0;
-            border-radius: 3px;
+            padding: 6px 8px;
+            border-radius: 4px;
+            background: #fafafa;
+            margin-bottom: 4px;
             cursor: pointer;
-            transition: background 0.2s;
+            font-size: 12px;
+            color: #37352f;
+            transition: background 0.15s ease;
         }
-        
+
         .shape-item:hover {
-            background: #e0e0e0;
+            background: #f0f0f0;
         }
-        
+
+        .shape-item.selected {
+            background: #f7f6f3;
+        }
+
         .shape-item button {
-            padding: 2px 8px;
+            padding: 2px 6px;
             font-size: 10px;
-            background: #ff4757;
-            color: white;
+            background: transparent;
             border: none;
-            border-radius: 3px;
+            color: #9b9b9b;
             cursor: pointer;
         }
-        
+
         .shape-item button:hover {
-            background: #ff3838;
+            color: #d73a49;
         }
-        
-        .cutting-plane-item {
-            padding: 3px;
-            margin: 1px 0;
-            background: #ffe6e6;
+
+        /* 列表容器 */
+        .list-container {
+            max-height: 150px;
+            overflow-y: auto;
+            border: 1px solid #e5e5e5;
+            border-radius: 4px;
+            padding: 6px;
+        }
+
+        /* 滑块容器 */
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .slider-value {
+            min-width: 36px;
+            text-align: center;
+            font-size: 11px;
+            color: #6b6b6b;
+        }
+
+        /* 弹窗遮罩 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* 弹窗内容 */
+        .modal-content {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+            padding: 20px;
+            max-width: 90%;
+            width: 400px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-title {
+            font-size: 16px;
+            font-weight: 500;
+            color: #37352f;
+            margin: 0 0 16px 0;
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 16px;
+        }
+
+        /* 滚动条 */
+        .tab-content::-webkit-scrollbar,
+        .list-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .tab-content::-webkit-scrollbar-track,
+        .list-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .tab-content::-webkit-scrollbar-thumb,
+        .list-container::-webkit-scrollbar-thumb {
+            background: #d4d4d4;
             border-radius: 3px;
+        }
+
+        .tab-content::-webkit-scrollbar-thumb:hover,
+        .list-container::-webkit-scrollbar-thumb:hover {
+            background: #b4b4b4;
+        }
+
+        /* 其他元素样式 */
+        .section-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: #37352f;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e5e5e5;
+        }
+
+        .mode-active {
+            background: #37352f !important;
+            color: #ffffff !important;
+            border-color: #37352f !important;
+        }
+
+        /* 切割平面列表项 */
+        .cutting-plane-item {
+            padding: 6px 8px;
+            margin: 4px 0;
+            background: #fafafa;
+            border-radius: 4px;
             font-size: 12px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-        }
-        
-        .cutting-plane-item button {
-            background: #ff4444;
-            color: white;
-            border: none;
-            padding: 2px 6px;
-            border-radius: 2px;
-            cursor: pointer;
-            font-size: 10px;
+            border: 1px solid #e5e5e5;
         }
 
+        .cutting-plane-item button {
+            background: transparent;
+            border: none;
+            color: #d73a49;
+            padding: 2px 6px;
+            font-size: 10px;
+            cursor: pointer;
+        }
+
+        .cutting-plane-item button:hover {
+            background: #faf0f0;
+        }
+
+        /* 骨骼列表项 */
         .bone-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 4px;
-            margin: 2px 0;
-            background: #fff3cd;
-            border-radius: 3px;
+            padding: 6px 8px;
+            margin: 4px 0;
+            background: #fafafa;
+            border-radius: 4px;
             font-size: 11px;
+            border: 1px solid #e5e5e5;
         }
 
         .bone-item button {
             padding: 2px 6px;
             font-size: 10px;
-            background: #007bff;
-            color: white;
+            background: transparent;
             border: none;
-            border-radius: 2px;
+            color: #d73a49;
             cursor: pointer;
             margin-left: 3px;
         }
 
         .bone-item button:hover {
-            background: #0056b3;
+            background: #faf0f0;
         }
 
+        /* 锚点列表项 */
         .anchor-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 4px;
-            margin: 2px 0;
-            background: #d1ecf1;
-            border-radius: 3px;
+            padding: 6px 8px;
+            margin: 4px 0;
+            background: #fafafa;
+            border-radius: 4px;
             font-size: 11px;
+            border: 1px solid #e5e5e5;
         }
 
         .anchor-item button {
             padding: 2px 6px;
             font-size: 10px;
-            background: #007bff;
-            color: white;
+            background: transparent;
             border: none;
-            border-radius: 2px;
+            color: #d73a49;
             cursor: pointer;
             margin-left: 3px;
         }
 
         .anchor-item button:hover {
-            background: #0056b3;
+            background: #faf0f0;
         }
 
-        .mode-active {
-            background: #28a745 !important;
-            color: white !important;
-        }
-        
-        /* 自定义滚动条样式 */
-        #controls::-webkit-scrollbar {
-            width: 8px;
-        }
-        
-        #controls::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 4px;
-        }
-        
-        #controls::-webkit-scrollbar-thumb {
-            background: #c1c1c1;
-            border-radius: 4px;
-        }
-        
-        #controls::-webkit-scrollbar-thumb:hover {
-            background: #a8a8a8;
-        }
-        
         /* 配置管理样式 */
         .config-item {
             display: flex;
@@ -302,983 +585,764 @@
             align-items: center;
             padding: 8px;
             margin: 5px 0;
-            background: #ffffff;
-            border: 1px solid #e0e0e0;
-            border-radius: 5px;
-            transition: all 0.2s ease;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            background: #fafafa;
+            border: 1px solid #e5e5e5;
+            border-radius: 4px;
+            transition: all 0.15s ease;
             position: relative;
         }
-        
+
         .config-item.folder-item {
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            border-left: 4px solid #007bff;
-            font-weight: bold;
+            background: #fafafa;
+            border-left: 3px solid #2eaadc;
+            font-weight: 500;
         }
-        
+
         .config-item.file-item {
             margin-left: 20px;
-            border-left: 2px solid #dee2e6;
-            background: #fdfdfd;
+            border-left: 2px solid #e5e5e5;
+            background: #ffffff;
         }
-        
-        .config-item.file-item::before {
-            content: "📄";
-            margin-right: 8px;
-            font-size: 14px;
-        }
-        
-        .config-item.folder-item::before {
-            content: "📁";
-            margin-right: 8px;
-            font-size: 14px;
-        }
-        
+
         .config-item:hover {
-            background: #f8f9fa;
-            border-color: #007bff;
-            transform: translateY(-1px);
-            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            background: #f0f0f0;
+            border-color: #d4d4d4;
         }
-        
+
         .config-info {
             flex: 1;
             margin-right: 10px;
         }
-        
+
         .config-name {
-            font-weight: bold;
-            color: #333;
+            font-weight: 500;
+            color: #37352f;
             font-size: 13px;
             margin-bottom: 3px;
         }
-        
+
         .config-details {
             font-size: 11px;
-            color: #666;
+            color: #6b6b6b;
             line-height: 1.3;
         }
-        
+
         .load-config-btn {
-            background: linear-gradient(45deg, #28a745, #20c997);
+            background: #37352f;
             color: white;
             border: none;
             padding: 6px 12px;
             border-radius: 4px;
             cursor: pointer;
             font-size: 11px;
-            font-weight: bold;
-            transition: all 0.2s ease;
+            font-weight: 500;
+            transition: all 0.15s ease;
             white-space: nowrap;
         }
-        
+
         .load-config-btn:hover {
-            background: linear-gradient(45deg, #218838, #1ea085);
-            transform: translateY(-1px);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            background: #2f2d2a;
         }
-        
+
         #configList {
             max-height: 200px;
             overflow-y: auto;
         }
-        
-        #configList::-webkit-scrollbar {
-            width: 6px;
-        }
-        
-        #configList::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 3px;
-        }
-        
-        #configList::-webkit-scrollbar-thumb {
-            background: #c1c1c1;
-            border-radius: 3px;
-        }
-        
-        #configList::-webkit-scrollbar-thumb:hover {
-            background: #a8a8a8;
-        }
-        
+
         .config-management-buttons {
             display: flex;
             flex-direction: column;
-            gap: 5px;
-            margin-bottom: 10px;
+            gap: 8px;
+            margin-bottom: 12px;
         }
-        
+
         .config-management-buttons button {
             width: 100%;
             padding: 8px;
-            font-size: 11px;
-            font-weight: bold;
-            border-radius: 5px;
-            transition: all 0.2s ease;
+            font-size: 12px;
+            font-weight: 500;
+            border-radius: 4px;
+            transition: all 0.15s ease;
         }
-        
-        #saveConfig {
-            background: linear-gradient(45deg, #007bff, #0056b3);
-        }
-        
-        #saveConfig:hover {
-            background: linear-gradient(45deg, #0056b3, #004085);
-        }
-        
-        #loadSingleConfig {
-            background: linear-gradient(45deg, #28a745, #20c997);
-        }
-        
-        #loadSingleConfig:hover {
-            background: linear-gradient(45deg, #20c997, #1ea085);
-        }
-        
-        #loadConfigFolder {
-            background: linear-gradient(45deg, #6f42c1, #5a2d91);
-        }
-        
-        #loadConfigFolder:hover {
-            background: linear-gradient(45deg, #5a2d91, #4c1f78);
+
+        /* 标签样式 */
+        label {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #37352f;
         }
     </style>
 </head>
 <body>
     <div id="container">
-        <!-- 帮助按钮 -->
-        <button id="helpButton" style="position: fixed; top: 20px; right: 20px; z-index: 1000; background: #007bff; color: white; border: none; border-radius: 50%; width: 50px; height: 50px; font-size: 20px; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.2); transition: all 0.3s ease;" title="帮助">
-            ?
-        </button>
-        
+        <!-- 顶部标题栏 -->
+        <div id="header">
+            <span class="title">3D 图形编辑器</span>
+            <button class="help-btn" id="headerHelpBtn">?</button>
+        </div>
+
         <!-- 帮助弹窗 -->
-        <div id="helpModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1001; overflow-y: auto;">
-            <div style="background: white; margin: 50px auto; padding: 30px; border-radius: 10px; max-width: 800px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); position: relative;">
-                <button id="closeHelp" style="position: absolute; top: 15px; right: 20px; background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>
-                
-                <h2 style="color: #333; margin-bottom: 20px; text-align: center;">🎯 3D图形编辑器 - 功能指南</h2>
-                
-                <div style="max-height: 70vh; overflow-y: auto; padding-right: 10px;">
-                    <!-- 项目特色 -->
-                    <div style="margin-bottom: 25px;">
-                        <h3 style="color: #007bff; border-bottom: 2px solid #007bff; padding-bottom: 5px;">🌟 项目特色</h3>
-                        <ul style="line-height: 1.6; color: #555;">
-                            <li><strong>多图形支持：</strong>立方体、球体、圆柱体、圆锥体、环面等基础几何体</li>
-                            <li><strong>高精度切割：</strong>三级精度模式，支持0.0001级别的超高精度切割</li>
-                            <li><strong>图形组合：</strong>支持多个图形的锁定组合操作</li>
-                            <li><strong>布尔运算：</strong>支持图形的并集、差集（挖空）、交集运算</li>
-                            <li><strong>实时预览：</strong>所有操作都有实时预览效果</li>
-                            <li><strong>完整撤销系统：</strong>支持图形创建/删除、位置/缩放调整、切割等所有操作的撤销/重做</li>
-                            <li><strong>配置管理：</strong>支持保存和加载场景配置文件</li>
-                            <li><strong>顶点编辑：</strong>直接拖动几何体的顶点自定义形状</li>
-                            <li><strong>骨骼系统：</strong>创建骨骼控制局部区域的顶点变形</li>
-                            <li><strong>锚点系统：</strong>添加锚点实现平滑的局部变形效果</li>
+        <div id="helpModal" class="modal-overlay" style="display: none;">
+            <div class="modal-content" style="max-width: 720px; width: 90%; max-height: 85vh; overflow-y: auto;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #e5e5e5;">
+                    <h2 style="margin: 0; font-size: 18px; font-weight: 600; color: #37352f;">功能指南</h2>
+                    <button id="closeHelp" style="background: transparent; border: none; font-size: 20px; cursor: pointer; color: #9b9b9b; padding: 4px;">&times;</button>
+                </div>
+
+                <!-- 项目特色 -->
+                <div style="margin-bottom: 24px;">
+                    <h3 style="color: #37352f; font-size: 14px; font-weight: 600; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #e5e5e5;">项目特色</h3>
+                    <ul style="line-height: 1.8; color: #6b6b6b; margin: 0; padding-left: 20px; font-size: 13px;">
+                        <li><strong>多图形支持：</strong>立方体、球体、圆柱体、圆锥体、环面等基础几何体</li>
+                        <li><strong>高精度切割：</strong>三级精度模式，支持0.0001级别的超高精度切割</li>
+                        <li><strong>布尔运算：</strong>支持图形的并集、差集（挖空）、交集运算</li>
+                        <li><strong>撤销系统：</strong>支持所有操作的撤销/重做，最多50步历史</li>
+                        <li><strong>顶点编辑：</strong>直接拖动几何体的顶点自定义形状</li>
+                        <li><strong>骨骼系统：</strong>创建骨骼控制局部区域的顶点变形</li>
+                        <li><strong>锚点系统：</strong>添加锚点实现平滑的局部变形效果</li>
+                        <li><strong>配置管理：</strong>支持保存和加载场景配置文件</li>
+                    </ul>
+                </div>
+
+                <!-- 基础操作 -->
+                <div style="margin-bottom: 24px;">
+                    <h3 style="color: #37352f; font-size: 14px; font-weight: 600; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #e5e5e5;">基础操作</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+                        <div style="background: #fafafa; padding: 12px; border-radius: 4px; border: 1px solid #e5e5e5;">
+                            <h4 style="color: #37352f; font-size: 12px; font-weight: 500; margin: 0 0 8px 0;">视角控制</h4>
+                            <ul style="font-size: 12px; color: #6b6b6b; margin: 0; padding-left: 16px; line-height: 1.6;">
+                                <li>左键拖拽：旋转视角</li>
+                                <li>右键拖拽：平移视角</li>
+                                <li>滚轮：缩放视角</li>
+                            </ul>
+                        </div>
+                        <div style="background: #fafafa; padding: 12px; border-radius: 4px; border: 1px solid #e5e5e5;">
+                            <h4 style="color: #37352f; font-size: 12px; font-weight: 500; margin: 0 0 8px 0;">图形选择与变换</h4>
+                            <ul style="font-size: 12px; color: #6b6b6b; margin: 0; padding-left: 16px; line-height: 1.6;">
+                                <li>点击图形：选中</li>
+                                <li>W/E/R：移动/旋转/缩放模式</li>
+                                <li>Delete：删除选中图形</li>
+                                <li>Ctrl+Z/Y：撤销/重做</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 切割工具 -->
+                <div style="margin-bottom: 24px;">
+                    <h3 style="color: #37352f; font-size: 14px; font-weight: 600; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #e5e5e5;">切割工具</h3>
+                    <div style="background: #fafafa; padding: 12px; border-radius: 4px; border: 1px solid #e5e5e5; margin-bottom: 12px;">
+                        <h4 style="color: #37352f; font-size: 12px; font-weight: 500; margin: 0 0 8px 0;">精度模式</h4>
+                        <ul style="font-size: 12px; color: #6b6b6b; margin: 0; padding-left: 16px; line-height: 1.6;">
+                            <li><strong>标准 (0.01)：</strong>一般建模需求</li>
+                            <li><strong>高精度 (0.001)：</strong>精细建模</li>
+                            <li><strong>超高精度 (0.0001)：</strong>工程级精密建模</li>
                         </ul>
                     </div>
+                    <div style="background: #fafafa; padding: 12px; border-radius: 4px; border: 1px solid #e5e5e5;">
+                        <h4 style="color: #37352f; font-size: 12px; font-weight: 500; margin: 0 0 8px 0;">操作步骤</h4>
+                        <ol style="font-size: 12px; color: #6b6b6b; margin: 0; padding-left: 16px; line-height: 1.6;">
+                            <li>点击"切割工具"进入调整模式</li>
+                            <li>使用滑块调整切割平面位置和法向量</li>
+                            <li>实时预览切割效果</li>
+                            <li>点击"应用切割"完成操作</li>
+                        </ol>
+                    </div>
+                </div>
 
-                    <!-- 基础操作 -->
-                    <div style="margin-bottom: 25px;">
-                        <h3 style="color: #28a745; border-bottom: 2px solid #28a745; padding-bottom: 5px;">🎮 基础操作</h3>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px;">
-                            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
-                                <h4 style="color: #333; margin-bottom: 8px;">🖱️ 视角控制</h4>
-                                <ul style="font-size: 14px; color: #666; margin: 0; padding-left: 20px;">
-                                    <li>左键拖拽：旋转视角</li>
-                                    <li>右键拖拽：平移视角</li>
-                                    <li>滚轮：缩放视角</li>
-                                </ul>
-                            </div>
-                            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
-                                <h4 style="color: #333; margin-bottom: 8px;">🎯 图形选择与变换</h4>
-                                <ul style="font-size: 14px; color: #666; margin: 0; padding-left: 20px;">
-                                    <li>点击图形：选中图形</li>
-                                    <li>选中后显示控制器</li>
-                                    <li>拖拽箭头：移动图形</li>
-                                    <li>拖拽圆环：旋转图形</li>
-                                    <li>快捷键 R/S：切换旋转/缩放模式</li>
-                                    <li>顶点编辑：点击绿色小球移动顶点</li>
-                                    <li>骨骼编辑：点击骨骼或创建新骨骼</li>
-                                    <li>锚点编辑：点击锚点或创建新锚点</li>
-                                </ul>
-                            </div>
+                <!-- 高级功能 -->
+                <div style="margin-bottom: 24px;">
+                    <h3 style="color: #37352f; font-size: 14px; font-weight: 600; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #e5e5e5;">高级功能</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div style="background: #fafafa; padding: 12px; border-radius: 4px; border: 1px solid #e5e5e5;">
+                            <h4 style="color: #37352f; font-size: 12px; font-weight: 500; margin: 0 0 6px 0;">布尔运算</h4>
+                            <p style="font-size: 12px; color: #6b6b6b; margin: 0; line-height: 1.5;">减法（挖空）、并集（合并）、交集三种运算模式</p>
                         </div>
-                        <div style="background: #e7f3ff; padding: 15px; border-radius: 8px; margin-top: 15px;">
-                            <h4 style="color: #0056b3; margin-bottom: 10px;">↩️ 撤销/重做系统</h4>
-                            <ul style="color: #004085; margin: 0; padding-left: 20px; line-height: 1.8;">
-                                <li><strong>支持的操作：</strong>图形创建/删除、位置调整（滑块/TransformControls）、缩放调整、颜色修改、切割操作、布尔运算、顶点编辑</li>
-                                <li><strong>历史记录：</strong>最多保存50步操作历史</li>
-                                <li><strong>使用方式：</strong>点击撤销/重做按钮，或使用Ctrl+Z/Ctrl+Y快捷键</li>
-                                <li><strong>智能防抖：</strong>滑块拖拽调整时，停止操作500ms后自动记录历史，避免频繁记录</li>
-                            </ul>
+                        <div style="background: #fafafa; padding: 12px; border-radius: 4px; border: 1px solid #e5e5e5;">
+                            <h4 style="color: #37352f; font-size: 12px; font-weight: 500; margin: 0 0 6px 0;">顶点编辑</h4>
+                            <p style="font-size: 12px; color: #6b6b6b; margin: 0; line-height: 1.5;">直接拖动几何体顶点改变形状，绿色小球标记可编辑顶点</p>
+                        </div>
+                        <div style="background: #fafafa; padding: 12px; border-radius: 4px; border: 1px solid #e5e5e5;">
+                            <h4 style="color: #37352f; font-size: 12px; font-weight: 500; margin: 0 0 6px 0;">骨骼系统</h4>
+                            <p style="font-size: 12px; color: #6b6b6b; margin: 0; line-height: 1.5;">创建骨骼控制局部区域顶点，影响半径2.0单位</p>
+                        </div>
+                        <div style="background: #fafafa; padding: 12px; border-radius: 4px; border: 1px solid #e5e5e5;">
+                            <h4 style="color: #37352f; font-size: 12px; font-weight: 500; margin: 0 0 6px 0;">锚点系统</h4>
+                            <p style="font-size: 12px; color: #6b6b6b; margin: 0; line-height: 1.5;">添加锚点实现平滑局部变形，可调整影响半径(0.1-5.0)</p>
                         </div>
                     </div>
-                    
-                    <!-- 切割工具详解 -->
-                    <div style="margin-bottom: 25px;">
-                        <h3 style="color: #dc3545; border-bottom: 2px solid #dc3545; padding-bottom: 5px;">✂️ 切割工具详解</h3>
-                        <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                            <h4 style="color: #856404; margin-bottom: 10px;">🎯 精度模式</h4>
-                            <ul style="color: #856404; margin: 0; padding-left: 20px;">
-                                <li><strong>标准精度 (0.01)：</strong>适用于一般建模需求</li>
-                                <li><strong>高精度 (0.001)：</strong>适用于精细建模</li>
-                                <li><strong>超高精度 (0.0001)：</strong>适用于工程级精密建模</li>
-                            </ul>
-                        </div>
-                        <div style="background: #d1ecf1; padding: 15px; border-radius: 8px;">
-                            <h4 style="color: #0c5460; margin-bottom: 10px;">🔧 操作步骤</h4>
-                            <ol style="color: #0c5460; margin: 0; padding-left: 20px;">
-                                <li>点击"切割工具"进入调整模式</li>
-                                <li>使用滑块或数值输入框调整切割平面位置和法向量</li>
-                                <li>使用旋转按钮精确调整平面角度</li>
-                                <li>实时预览切割效果</li>
-                                <li>点击"应用切割"完成操作</li>
-                            </ol>
-                        </div>
-                    </div>
-                    
-                    <!-- 高级功能 -->
-                    <div style="margin-bottom: 25px;">
-                        <h3 style="color: #6f42c1; border-bottom: 2px solid #6f42c1; padding-bottom: 5px;">🚀 高级功能</h3>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px;">
-                            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
-                                <h4 style="color: #333; margin-bottom: 8px;">🔒 图形组合</h4>
-                                <p style="font-size: 14px; color: #666; margin: 0;">选择多个图形后可以锁定组合，作为一个整体进行切割操作</p>
-                            </div>
-                            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
-                                <h4 style="color: #333; margin-bottom: 8px;">🔧 TransformControls</h4>
-                                <p style="font-size: 14px; color: #666; margin: 0;">选中图形后显示3D控制器，支持拖拽箭头移动、拖拽旋转环旋转</p>
-                            </div>
-                            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
-                                <h4 style="color: #333; margin-bottom: 8px;">🎨 颜色管理</h4>
-                                <p style="font-size: 14px; color: #666; margin: 0;">支持批量更新所有图形颜色，以及图形颜色主题选择</p>
-                            </div>
-                            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
-                                <h4 style="color: #333; margin-bottom: 8px;">💾 配置管理</h4>
-                                <p style="font-size: 14px; color: #666; margin: 0;">支持保存当前场景为配置文件，并可随时加载或批量管理</p>
-                            </div>
-                            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
-                                <h4 style="color: #333; margin-bottom: 8px;">✏️ 顶点编辑</h4>
-                                <p style="font-size: 14px; color: #666; margin: 0;">进入顶点编辑模式后，可以直接拖动几何体的每个顶点来改变形状</p>
-                            </div>
-                            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
-                                <h4 style="color: #333; margin-bottom: 8px;">🦴 骨骼系统</h4>
-                                <p style="font-size: 14px; color: #666; margin: 0;">创建骨骼来控制局部区域的顶点，实现类似角色动画的变形效果</p>
-                            </div>
-                            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
-                                <h4 style="color: #333; margin-bottom: 8px;">⚓ 锚点系统</h4>
-                                <p style="font-size: 14px; color: #666; margin: 0;">添加锚点实现平滑的局部变形，可调整影响半径控制变形范围</p>
-                            </div>
-                        </div>
-                        <div style="background: #e7f3ff; padding: 15px; border-radius: 8px; margin-top: 15px;">
-                            <h4 style="color: #0056b3; margin-bottom: 10px;">🔧 布尔运算</h4>
-                            <p style="font-size: 14px; color: #004085; margin: 0; line-height: 1.6;">选择两个图形后可执行布尔运算：<br>
-                            • <strong>减法（挖空）</strong>：使用工具图形从主体图形中挖出空洞<br>
-                            • <strong>并集（合并）</strong>：将两个图形合并为一个<br>
-                            • <strong>交集</strong>：保留两个图形相交的部分</p>
-                        </div>
-                    </div>
-                            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
-                                <h4 style="color: #333; margin-bottom: 8px;">🔧 TransformControls</h4>
-                                <p style="font-size: 14px; color: #666; margin: 0;">选中图形后显示3D控制器，支持拖拽箭头移动、拖拽旋转环旋转</p>
-                            </div>
-                            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
-                                <h4 style="color: #333; margin-bottom: 8px;">🎨 颜色管理</h4>
-                                <p style="font-size: 14px; color: #666; margin: 0;">支持批量更新所有图形颜色，以及图形颜色主题选择</p>
-                            </div>
-                            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
-                                <h4 style="color: #333; margin-bottom: 8px;">💾 配置管理</h4>
-                                <p style="font-size: 14px; color: #666; margin: 0;">支持保存当前场景为配置文件，并可随时加载或批量管理</p>
-                            </div>
-                        </div>
-                        <div style="background: #e7f3ff; padding: 15px; border-radius: 8px; margin-top: 15px;">
-                            <h4 style="color: #0056b3; margin-bottom: 10px;">🔧 布尔运算</h4>
-                            <p style="font-size: 14px; color: #004085; margin: 0; line-height: 1.6;">选择两个图形后可执行布尔运算：<br>
-                            • <strong>减法（挖空）</strong>：使用工具图形从主体图形中挖出空洞<br>
-                            • <strong>并集（合并）</strong>：将两个图形合并为一个<br>
-                            • <strong>交集</strong>：保留两个图形相交的部分</p>
-                        </div>
-                        <div style="background: #d4edda; padding: 15px; border-radius: 8px; margin-top: 15px;">
-                            <h4 style="color: #155724; margin-bottom: 10px;">✏️ 顶点编辑</h4>
-                            <p style="font-size: 14px; color: #155724; margin: 0; line-height: 1.6;">选中图形后进入顶点编辑模式：<br>
-                            • <strong>显示顶点</strong>：绿色小球标记所有可编辑的顶点<br>
-                            • <strong>选择顶点</strong>：点击绿色小球选中顶点（变红）<br>
-                            • <strong>移动顶点</strong>：使用TransformControls拖拽顶点改变形状<br>
-                            • <strong>退出模式</strong>：点击按钮或取消图形选择</p>
-                        </div>
-                        <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-top: 15px;">
-                            <h4 style="color: #856404; margin-bottom: 10px;">🦴 骨骼编辑</h4>
-                            <p style="font-size: 14px; color: #856404; margin: 0; line-height: 1.6;">选中图形后进入骨骼编辑模式：<br>
-                            • <strong>添加骨骼</strong>：点击按钮或在图形表面点击创建骨骼<br>
-                            • <strong>选择骨骼</strong>：点击骨骼选中（变绿）<br>
-                            • <strong>移动骨骼</strong>：使用TransformControls拖拽骨骼带动周围顶点<br>
-                            • <strong>影响范围</strong>：骨骼会影响距离2.0单位内的顶点<br>
-                            • <strong>删除骨骼</strong>：在骨骼列表中选择要删除的骨骼</p>
-                        </div>
-                        <div style="background: #d1ecf1; padding: 15px; border-radius: 8px; margin-top: 15px;">
-                            <h4 style="color: #0c5460; margin-bottom: 10px;">⚓ 锚点编辑</h4>
-                            <p style="font-size: 14px; color: #0c5460; margin: 0; line-height: 1.6;">选中图形后进入锚点编辑模式：<br>
-                            • <strong>添加锚点</strong>：点击按钮或在图形表面点击创建锚点<br>
-                            • <strong>选择锚点</strong>：点击锚点选中（变洋红色）<br>
-                            • <strong>移动锚点</strong>：使用TransformControls拖拽锚点影响周围顶点<br>
-                            • <strong>影响半径</strong>：通过滑块调整锚点的影响范围（0.1-5.0）<br>
-                            • <strong>平滑变形</strong>：使用距离平方衰减实现平滑的局部变形</p>
-                        </div>
-                    </div>
+                </div>
 
-                    <!-- 使用技巧 -->
-                    <div style="margin-bottom: 25px;">
-                        <h3 style="color: #fd7e14; border-bottom: 2px solid #fd7e14; padding-bottom: 5px;">💡 使用技巧</h3>
-                        <div style="background: #fff3cd; padding: 15px; border-radius: 8px;">
-                            <ul style="color: #856404; margin: 0; padding-left: 20px; line-height: 1.6;">
-                                <li>使用数值输入框可以实现更精确的参数控制</li>
-                                <li>切割前建议先预览效果，确认无误后再应用</li>
-                                <li>复杂模型建议分步骤进行切割，避免一次性操作过多</li>
-                                <li><strong>善用撤销功能</strong>：所有变换操作（移动、缩放、旋转）都可撤销，可以安全地尝试各种参数组合</li>
-                                <li>组合功能适用于需要整体操作的复杂结构</li>
-                                <li>TransformControls拖拽变换结束后会自动记录历史，方便调整</li>
-                                <li>布尔运算对已切割的图形建议使用CSG引擎切割模式</li>
-                                <li>定期保存重要场景到配置文件，避免意外丢失</li>
-                                <li><strong>顶点编辑</strong>：移动顶点时会自动重新计算法线，保持光照效果</li>
-                                <li><strong>骨骼系统</strong>：骨骼会影响半径2.0单位内的顶点，可通过调整骨骼位置实现局部变形</li>
-                                <li><strong>锚点系统</strong>：锚点使用距离平方衰减，变形更平滑自然，可调整影响半径（0.1-5.0）</li>
-                            </ul>
+                <!-- 快捷键 -->
+                <div style="margin-bottom: 24px;">
+                    <h3 style="color: #37352f; font-size: 14px; font-weight: 600; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #e5e5e5;">快捷键</h3>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #6b6b6b;">
+                            <code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-size: 11px;">W</code>
+                            <span>移动模式</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #6b6b6b;">
+                            <code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-size: 11px;">E</code>
+                            <span>旋转模式</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #6b6b6b;">
+                            <code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-size: 11px;">R</code>
+                            <span>缩放模式</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #6b6b6b;">
+                            <code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-size: 11px;">Delete</code>
+                            <span>删除图形</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #6b6b6b;">
+                            <code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-size: 11px;">Ctrl+Z</code>
+                            <span>撤销</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #6b6b6b;">
+                            <code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-size: 11px;">Ctrl+Y</code>
+                            <span>重做</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #6b6b6b;">
+                            <code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-size: 11px;">Ctrl+C</code>
+                            <span>复制图形</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #6b6b6b;">
+                            <code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-size: 11px;">Ctrl+1/2/3</code>
+                            <span>精度切换</span>
                         </div>
                     </div>
-                    
-                    <!-- 注意事项 -->
-                    <div>
-                        <h3 style="color: #dc3545; border-bottom: 2px solid #dc3545; padding-bottom: 5px;">⚠️ 注意事项</h3>
-                        <div style="background: #f8d7da; padding: 15px; border-radius: 8px;">
-                            <ul style="color: #721c24; margin: 0; padding-left: 20px; line-height: 1.6;">
-                                <li>几何切割和布尔运算是永久性操作，应用后无法通过清除切割平面恢复（可使用撤销功能）</li>
-                                <li>超高精度模式会增加计算时间，请根据需要选择</li>
-                                <li>大型复杂模型的切割和布尔运算操作可能需要较长时间</li>
-                                <li>建议定期保存重要的建模进度到配置文件</li>
-                                <li>布尔运算前建议先撤销历史，确保操作可回退</li>
-                            </ul>
-                        </div>
-                    </div>
+                </div>
+
+                <!-- 注意事项 -->
+                <div>
+                    <h3 style="color: #37352f; font-size: 14px; font-weight: 600; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #e5e5e5;">注意事项</h3>
+                    <ul style="font-size: 12px; color: #6b6b6b; margin: 0; padding-left: 16px; line-height: 1.8;">
+                        <li>切割前建议先预览效果，确认无误后再应用</li>
+                        <li>复杂模型建议分步骤进行切割</li>
+                        <li>布尔运算对已切割的图形建议使用CSG引擎模式</li>
+                        <li>定期保存重要场景到配置文件</li>
+                    </ul>
                 </div>
             </div>
         </div>
-        
-        <div id="controls">
-            <button class="minimize-btn" id="controlsMinimizeBtn" title="最小化/展开工具栏">−</button>
-            <div class="control-content">
-            <div class="section-title">🎯 图形选择</div>
-            <div class="control-group">
-                <label for="shapeSelect">选择立体图形:</label>
-                <select id="shapeSelect">
-                    <option value="cube">立方体</option>
-                    <option value="sphere">球体</option>
-                    <option value="cylinder">圆柱体</option>
-                    <option value="cone">圆锥体</option>
-                    <option value="pyramid">四角锥</option>
-                    <option value="torus">环形体</option>
-                    <option value="dodecahedron">十二面体</option>
-                    <option value="icosahedron">二十面体</option>
-                </select>
-            </div>
-            
-            <div class="control-group">
-                <button id="addShape" style="background: linear-gradient(45deg, #2ed573, #1e90ff); color: white; width: 100%; padding: 8px; font-weight: bold;">添加图形</button>
-            </div>
-            
-            <div class="control-group">
-                <button id="lockCombination" style="background: linear-gradient(45deg, #ffa502, #ff6348); color: white; width: 100%; padding: 8px; font-weight: bold;">拼合锁定</button>
-            </div>
-            
-            <div class="section-title">🎮 图形管理</div>
-            <div class="control-group">
-                <button id="duplicateShape">复制选中图形</button>
-                <button id="clearAll" style="background: linear-gradient(45deg, #ff4757, #ff3838);">清空所有</button>
-            </div>
-            
-            <div class="control-group">
-                <div style="display: flex; gap: 5px;">
-                    <button id="undoBtn" style="flex: 1;">撤销 (Ctrl+Z)</button>
-                    <button id="redoBtn" style="flex: 1;">重做 (Ctrl+Y)</button>
-                </div>
-            </div>
-            
-            <div class="section-title">🔧 高级工具</div>
-            <div class="control-group">
-                <button id="toggleCutting">切割工具</button>
-                <button id="clearCutting">清除切割平面</button>
-            </div>
-            
-            <div class="control-group">
-                <button id="toggleBoolean" style="background: linear-gradient(45deg, #e74c3c, #c0392b); color: white; width: 100%; padding: 8px; font-weight: bold;">🔧 布尔运算</button>
+
+        <!-- 侧边栏 -->
+        <div id="sidebar">
+            <!-- 收起按钮 -->
+            <div class="sidebar-toggle" id="sidebarToggle">
+                <span>◀</span>
             </div>
 
-            <div class="control-group">
-                <button id="toggleVertexEdit" style="background: linear-gradient(45deg, #9b59b6, #8e44ad); color: white; width: 100%; padding: 8px; font-weight: bold;">✏️ 顶点编辑</button>
+            <!-- 收起状态的图标 -->
+            <div class="sidebar-icons">
+                <div class="icon-btn" data-tab="basic" title="基础">📁</div>
+                <div class="icon-btn" data-tab="cutting" title="切割">✂️</div>
+                <div class="icon-btn" data-tab="advanced" title="高级">🔧</div>
+                <div class="icon-btn" data-tab="settings" title="设置">⚙️</div>
             </div>
 
-            <div class="control-group">
-                <button id="toggleBoneEdit" style="background: linear-gradient(45deg, #ff6b6b, #ee5a5a); color: white; width: 100%; padding: 8px; font-weight: bold;">🦴 骨骼编辑</button>
-                <button id="addBone" style="display: none; margin-top: 5px; background: linear-gradient(45deg, #ffa502, #ff7f50); color: white; padding: 6px; font-weight: bold;">+ 添加骨骼</button>
+            <!-- 标签页导航 -->
+            <div id="tabs">
+                <button class="tab-btn active" data-tab="basic">基础</button>
+                <button class="tab-btn" data-tab="cutting">切割</button>
+                <button class="tab-btn" data-tab="advanced">高级</button>
+                <button class="tab-btn" data-tab="settings">设置</button>
             </div>
 
-            <div id="boneControlPanel" style="display: none; margin-top: 10px; padding: 10px; background: #fff3cd; border-radius: 5px; border: 1px solid #ffc107;">
-                <label style="font-size: 12px; color: #856404; font-weight: bold;">骨骼列表:</label>
-                <div id="boneList" style="max-height: 100px; overflow-y: auto; margin-top: 5px; font-size: 11px;"></div>
-                <div style="margin-top: 8px;">
-                    <button id="deleteSelectedBone" style="width: 100%; background: #dc3545; color: white; padding: 6px; font-size: 11px; border: none; border-radius: 3px;">删除选中的骨骼</button>
-                </div>
-            </div>
+            <!-- 标签页内容 -->
+            <div class="tab-content">
+                <!-- 基础标签页 -->
+                <div class="tab-panel active" id="tab-basic">
+                    <div class="control-section">
+                        <div class="section-label">图形创建</div>
+                        <select id="shapeSelect">
+                            <option value="cube">立方体</option>
+                            <option value="sphere">球体</option>
+                            <option value="cylinder">圆柱体</option>
+                            <option value="cone">圆锥体</option>
+                            <option value="pyramid">四角锥</option>
+                            <option value="torus">环形体</option>
+                            <option value="dodecahedron">十二面体</option>
+                            <option value="icosahedron">二十面体</option>
+                        </select>
+                        <button id="addShape" style="margin-top: 8px; width: 100%;">+ 添加图形</button>
+                        <button id="lockCombination" style="margin-top: 6px; width: 100%;">拼合锁定</button>
+                    </div>
 
-            <div class="control-group">
-                <button id="toggleAnchorEdit" style="background: linear-gradient(45deg, #00d2d3, #01a3a4); color: white; width: 100%; padding: 8px; font-weight: bold;">⚓ 锚点编辑</button>
-                <button id="addAnchor" style="display: none; margin-top: 5px; background: linear-gradient(45deg, #0abde3, #48dbfb); color: white; padding: 6px; font-weight: bold;">+ 添加随机锚点</button>
-            </div>
+                    <div class="control-section">
+                        <div class="section-label">图形列表</div>
+                        <div class="list-container" id="shapesList"></div>
+                    </div>
 
-            <div class="control-group">
-                <button id="openCubeNetEditor" style="background: linear-gradient(45deg, #f0932b, #ff6b6b); color: white; width: 100%; padding: 8px; font-weight: bold;">🎲 六面体展开图编辑器</button>
-            </div>
+                    <div class="control-section">
+                        <div class="section-label">操作</div>
+                        <div style="display: flex; gap: 6px;">
+                            <button id="undoBtn" style="flex: 1;">撤销</button>
+                            <button id="redoBtn" style="flex: 1;">重做</button>
+                        </div>
+                        <div style="display: flex; gap: 6px; margin-top: 6px;">
+                            <button id="duplicateShape" style="flex: 1;">复制</button>
+                            <button id="clearAll" class="danger" style="flex: 1;">清空</button>
+                        </div>
+                    </div>
 
-            <div id="anchorControlPanel" style="display: none; margin-top: 10px; padding: 10px; background: #d1ecf1; border-radius: 5px; border: 1px solid #bee5eb;">
-                <label style="font-size: 12px; color: #0c5460; font-weight: bold;">锚点列表:</label>
-                <div id="anchorList" style="max-height: 100px; overflow-y: auto; margin-top: 5px; font-size: 11px;"></div>
-                <div style="margin-top: 8px;">
-                    <label style="font-size: 11px; color: #0c5460;">影响半径:</label>
-                    <div style="display: flex; gap: 3px; align-items: center; margin-top: 3px;">
-                        <input type="range" id="anchorInfluenceRadius" min="0.1" max="5.0" step="0.1" value="0.5" style="flex: 1;">
-                        <span id="anchorInfluenceRadiusValue" style="font-size: 11px; min-width: 30px; text-align: center;">0.5</span>
+                    <div class="control-section">
+                        <div class="section-label">显示</div>
+                        <button id="toggleGrid" style="width: 100%;">隐藏网格</button>
+                    </div>
+
+                    <div class="control-section" id="shapeInfo" style="background: #fafafa; padding: 10px; border-radius: 4px; font-size: 12px; color: #6b6b6b;">
+                        点击图形进行选择
                     </div>
                 </div>
-                <div style="margin-top: 8px;">
-                    <button id="deleteSelectedAnchor" style="width: 100%; background: #dc3545; color: white; padding: 6px; font-size: 11px; border: none; border-radius: 3px;">删除选中的锚点</button>
-                </div>
-            </div>
 
-            <div class="control-group" id="booleanPanel" style="display: none;">
-                <label>布尔运算操作:</label>
-                <div style="border: 1px solid #ddd; border-radius: 5px; padding: 8px; background: #f8f9fa;">
-                    <div style="margin-bottom: 8px;">
-                        <label style="font-size: 12px; color: #666;">选择两个图形进行布尔运算</label>
+                <!-- 切割标签页 -->
+                <div class="tab-panel" id="tab-cutting">
+                    <div class="control-section">
+                        <button id="toggleCutting" style="width: 100%;">切割工具</button>
+                        <button id="clearCutting" style="width: 100%; margin-top: 6px;">清除切割平面</button>
+                        <button id="toggleCuttingPreview" style="width: 100%; margin-top: 6px;">切割预览窗口</button>
                     </div>
-                    <div style="margin-bottom: 8px;">
-                        <label style="font-size: 12px;">主体图形 (被挖空的图形):</label>
-                        <select id="booleanMainShape" style="width: 100%; padding: 4px; margin-top: 2px;">
+
+                    <div class="control-section" id="cuttingPlaneControls" style="display: none;">
+                        <div class="section-label">精度模式</div>
+                        <select id="precisionMode">
+                            <option value="standard">标准精度 (0.01)</option>
+                            <option value="high">高精度 (0.001)</option>
+                            <option value="ultra">超高精度 (0.0001)</option>
+                        </select>
+
+                        <div class="section-label" style="margin-top: 12px;">切割平面位置</div>
+                        <div style="margin-bottom: 8px;">
+                            <div class="slider-container">
+                                <span style="font-size: 11px; color: #d73a49; width: 20px;">X:</span>
+                                <input type="range" id="cuttingPosX" min="-10" max="30" step="0.001" value="0">
+                                <span class="slider-value" id="cuttingPosXValue">0</span>
+                                <input type="number" id="cuttingPosXInput" min="-10" max="30" step="0.001" value="0" style="width: 50px;">
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 8px;">
+                            <div class="slider-container">
+                                <span style="font-size: 11px; color: #28a745; width: 20px;">Y:</span>
+                                <input type="range" id="cuttingPosY" min="-10" max="30" step="0.001" value="0">
+                                <span class="slider-value" id="cuttingPosYValue">0</span>
+                                <input type="number" id="cuttingPosYInput" min="-10" max="30" step="0.001" value="0" style="width: 50px;">
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 8px;">
+                            <div class="slider-container">
+                                <span style="font-size: 11px; color: #007bff; width: 20px;">Z:</span>
+                                <input type="range" id="cuttingPosZ" min="-10" max="30" step="0.001" value="0">
+                                <span class="slider-value" id="cuttingPosZValue">0</span>
+                                <input type="number" id="cuttingPosZInput" min="-10" max="30" step="0.001" value="0" style="width: 50px;">
+                            </div>
+                        </div>
+
+                        <div class="section-label" style="margin-top: 12px;">法向量</div>
+                        <div style="margin-bottom: 8px;">
+                            <div class="slider-container">
+                                <span style="font-size: 11px; width: 20px;">X:</span>
+                                <input type="range" id="cuttingNormalX" min="-1" max="1" step="0.001" value="1">
+                                <span class="slider-value" id="cuttingNormalXValue">1</span>
+                                <input type="number" id="cuttingNormalXInput" min="-1" max="1" step="0.001" value="1" style="width: 50px;">
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 8px;">
+                            <div class="slider-container">
+                                <span style="font-size: 11px; width: 20px;">Y:</span>
+                                <input type="range" id="cuttingNormalY" min="-1" max="1" step="0.001" value="0">
+                                <span class="slider-value" id="cuttingNormalYValue">0</span>
+                                <input type="number" id="cuttingNormalYInput" min="-1" max="1" step="0.001" value="0" style="width: 50px;">
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 8px;">
+                            <div class="slider-container">
+                                <span style="font-size: 11px; width: 20px;">Z:</span>
+                                <input type="range" id="cuttingNormalZ" min="-1" max="1" step="0.001" value="0">
+                                <span class="slider-value" id="cuttingNormalZValue">0</span>
+                                <input type="number" id="cuttingNormalZInput" min="-1" max="1" step="0.001" value="0" style="width: 50px;">
+                            </div>
+                        </div>
+
+                        <div class="section-label" style="margin-top: 12px;">快速设置方向</div>
+                        <div style="display: flex; gap: 6px;">
+                            <button id="setNormalX" style="flex: 1;">X轴</button>
+                            <button id="setNormalY" style="flex: 1;">Y轴</button>
+                            <button id="setNormalZ" style="flex: 1;">Z轴</button>
+                        </div>
+
+                        <div class="section-label" style="margin-top: 12px;">旋转控制</div>
+                        <div style="display: flex; gap: 6px;">
+                            <button id="rotateCuttingPlaneX" style="flex: 1;">绕X</button>
+                            <button id="rotateCuttingPlaneY" style="flex: 1;">绕Y</button>
+                            <button id="rotateCuttingPlaneZ" style="flex: 1;">绕Z</button>
+                        </div>
+
+                        <div class="section-label" style="margin-top: 12px;">3D 控制器</div>
+                        <button id="toggleCuttingTransform" style="width: 100%;">显示控制器</button>
+                        <div style="display: flex; gap: 6px; margin-top: 6px;">
+                            <button id="setCuttingTransformModeRotate" style="flex: 1;">旋转</button>
+                            <button id="setCuttingTransformModeTranslate" style="flex: 1;">移动</button>
+                        </div>
+
+                        <div style="margin-top: 12px;">
+                            <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #6b6b6b;">
+                                <input type="checkbox" id="useCSG">
+                                使用 CSG 引擎切割
+                            </label>
+                        </div>
+
+                        <div style="margin-top: 8px;">
+                            <label style="display: block; font-size: 12px; color: #6b6b6b; margin-bottom: 4px;">切割模式:</label>
+                            <select id="capMode">
+                                <option value="seal" selected>封闭缺口并切割</option>
+                                <option value="cut">只切割不封闭</option>
+                            </select>
+                        </div>
+
+                        <div style="margin-top: 8px;">
+                            <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #6b6b6b;">
+                                <input type="checkbox" id="autoClearCuttingPlane" checked>
+                                切割后自动清除平面
+                            </label>
+                        </div>
+
+                        <div style="display: flex; gap: 6px; margin-top: 12px;">
+                            <button id="applyCuttingPlane" class="primary" style="flex: 1;">应用切割</button>
+                            <button id="resetCuttingPlane" style="flex: 1;">重置</button>
+                        </div>
+                    </div>
+
+                    <div class="control-section">
+                        <div class="section-label">切割平面列表</div>
+                        <div class="list-container" id="cuttingPlanesList"></div>
+                    </div>
+                </div>
+
+                <!-- 高级标签页 -->
+                <div class="tab-panel" id="tab-advanced">
+                    <div class="control-section">
+                        <button id="toggleBoolean" style="width: 100%;">布尔运算</button>
+                    </div>
+
+                    <div class="control-section" id="booleanPanel" style="display: none; background: #fafafa; padding: 12px; border-radius: 4px;">
+                        <div class="section-label">主体图形</div>
+                        <select id="booleanMainShape">
                             <option value="">请选择主体图形</option>
                         </select>
-                    </div>
-                    <div style="margin-bottom: 8px;">
-                        <label style="font-size: 12px;">工具图形 (用来挖空的图形):</label>
-                        <select id="booleanToolShape" style="width: 100%; padding: 4px; margin-top: 2px;">
+
+                        <div class="section-label" style="margin-top: 8px;">工具图形</div>
+                        <select id="booleanToolShape">
                             <option value="">请选择工具图形</option>
                         </select>
-                    </div>
-                    <div style="margin-bottom: 8px;">
-                        <label style="font-size: 12px;">运算类型:</label>
-                        <select id="booleanOperation" style="width: 100%; padding: 4px; margin-top: 2px;">
+
+                        <div class="section-label" style="margin-top: 8px;">运算类型</div>
+                        <select id="booleanOperation">
                             <option value="subtract">减法 (挖空)</option>
                             <option value="union">并集 (合并)</option>
-                            <option value="intersect">交集 (相交部分)</option>
+                            <option value="intersect">交集</option>
                         </select>
+
+                        <div style="display: flex; gap: 6px; margin-top: 12px;">
+                            <button id="executeBoolean" class="primary" style="flex: 1;">执行运算</button>
+                            <button id="cancelBoolean" style="flex: 1;">取消</button>
+                        </div>
                     </div>
-                    <div style="display: flex; gap: 5px; margin-top: 8px;">
-                        <button id="executeBoolean" style="flex: 1; background: #28a745; color: white; border: none; padding: 8px; border-radius: 3px; font-size: 12px;">执行运算</button>
-                        <button id="cancelBoolean" style="flex: 1; background: #6c757d; color: white; border: none; padding: 8px; border-radius: 3px; font-size: 12px;">取消</button>
+
+                    <div class="control-section">
+                        <button id="toggleVertexEdit" style="width: 100%;">顶点编辑</button>
+                    </div>
+
+                    <div class="control-section">
+                        <button id="toggleBoneEdit" style="width: 100%;">骨骼编辑</button>
+                        <button id="addBone" style="display: none; margin-top: 6px; width: 100%;">+ 添加骨骼</button>
+                    </div>
+
+                    <div class="control-section" id="boneControlPanel" style="display: none; background: #fafafa; padding: 10px; border-radius: 4px;">
+                        <div class="section-label">骨骼列表</div>
+                        <div class="list-container" id="boneList" style="max-height: 80px;"></div>
+                        <button id="deleteSelectedBone" class="danger" style="width: 100%; margin-top: 8px;">删除选中的骨骼</button>
+                    </div>
+
+                    <div class="control-section">
+                        <button id="toggleAnchorEdit" style="width: 100%;">锚点编辑</button>
+                        <button id="addAnchor" style="display: none; margin-top: 6px; width: 100%;">+ 添加锚点</button>
+                    </div>
+
+                    <div class="control-section" id="anchorControlPanel" style="display: none; background: #fafafa; padding: 10px; border-radius: 4px;">
+                        <div class="section-label">锚点列表</div>
+                        <div class="list-container" id="anchorList" style="max-height: 80px;"></div>
+                        <div style="margin-top: 8px;">
+                            <div class="section-label">影响半径</div>
+                            <div class="slider-container">
+                                <input type="range" id="anchorInfluenceRadius" min="0.1" max="5.0" step="0.1" value="0.5">
+                                <span class="slider-value" id="anchorInfluenceRadiusValue">0.5</span>
+                            </div>
+                        </div>
+                        <button id="deleteSelectedAnchor" class="danger" style="width: 100%; margin-top: 8px;">删除选中的锚点</button>
+                    </div>
+
+                    <div class="control-section">
+                        <button id="openCubeNetEditor" style="width: 100%;">六面体展开图编辑器</button>
                     </div>
                 </div>
-            </div>
-            
-            <div class="control-group">
-                <button id="toggleGrid">隐藏网格</button>
-            </div>
-            
-            <div class="control-group">
-                <label>图形列表:</label>
-                <div id="shapesList" style="max-height: 120px; overflow-y: auto; border: 1px solid #ddd; border-radius: 5px; padding: 5px;"></div>
-            </div>
-            
-            <div class="control-group">
-                <label>切割平面调整:</label>
-                <div id="cuttingPlaneControls" style="display: none; border: 1px solid #ddd; border-radius: 5px; padding: 8px; background: #f8f9fa;">
-                    <div style="margin-bottom: 8px;">
-                        <label style="font-size: 12px;">精度模式:</label>
-                        <select id="precisionMode" style="width: 100%; padding: 2px; font-size: 11px; margin-bottom: 5px;" title="快捷键: Ctrl+1/2/3">
-                             <option value="standard">标准精度 (0.01) - Ctrl+1</option>
-                             <option value="high">高精度 (0.001) - Ctrl+2</option>
-                             <option value="ultra">超高精度 (0.0001) - Ctrl+3</option>
-                         </select>
+
+                <!-- 设置标签页 -->
+                <div class="tab-panel" id="tab-settings">
+                    <div class="control-section">
+                        <div class="section-label">配置管理</div>
+                        <button id="saveConfig" style="width: 100%;">保存当前配置</button>
+                        <button id="loadSingleConfig" style="width: 100%; margin-top: 6px;">选择配置文件</button>
+                        <button id="loadConfigFolder" style="width: 100%; margin-top: 6px;">选择配置文件夹</button>
+                        <input type="file" id="singleConfigInput" style="display: none;" accept=".json">
+                        <input type="file" id="configFolderInput" webkitdirectory directory multiple style="display: none;" accept=".json">
                     </div>
-                    <div style="margin-bottom: 8px;">
-                        <label style="font-size: 12px;">位置 (X轴):</label>
-                        <div style="display: flex; gap: 3px; align-items: center;">
-                            <div class="slider-container" style="flex: 1;">
-                                <input type="range" id="cuttingPosX" min="-10" max="30" step="0.001" value="0" style="width: 100%;">
-                                <span class="slider-value" id="cuttingPosXValue">0</span>
+
+                    <div class="control-section">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <div class="section-label" style="margin: 0;">配置文件列表</div>
+                            <button id="refreshConfigs" style="padding: 4px 8px; font-size: 11px;">刷新</button>
+                        </div>
+                        <input type="text" id="configSearchInput" placeholder="搜索配置文件..." style="margin-bottom: 8px;">
+                        <div class="list-container" id="configList" style="max-height: 150px;"></div>
+                        <div id="configListPlaceholder" style="padding: 20px; text-align: center; color: #9b9b9b; font-size: 12px;">
+                            配置列表为空，点击刷新加载
+                        </div>
+                    </div>
+
+                    <!-- 保存配置对话框 -->
+                    <div id="saveConfigModal" class="modal-overlay" style="display: none;">
+                        <div class="modal-content">
+                            <h3 style="margin: 0 0 16px 0; font-size: 16px; color: #37352f;">保存配置</h3>
+                            <div style="margin-bottom: 16px;">
+                                <label style="display: block; margin-bottom: 6px; font-size: 12px; color: #6b6b6b;">配置名称:</label>
+                                <input type="text" id="configNameInput" placeholder="输入配置名称">
                             </div>
-                            <input type="number" id="cuttingPosXInput" min="-10" max="30" step="0.001" value="0" 
-                                   style="width: 60px; padding: 2px; font-size: 10px; border: 1px solid #ccc; border-radius: 3px;">
-                        </div>
-                    </div>
-                    <div style="margin-bottom: 8px;">
-                        <label style="font-size: 12px;">位置 (Y轴):</label>
-                        <div style="display: flex; gap: 3px; align-items: center;">
-                            <div class="slider-container" style="flex: 1;">
-                                <input type="range" id="cuttingPosY" min="-10" max="30" step="0.001" value="0" style="width: 100%;">
-                                <span class="slider-value" id="cuttingPosYValue">0</span>
-                            </div>
-                            <input type="number" id="cuttingPosYInput" min="-10" max="30" step="0.001" value="0" 
-                                   style="width: 60px; padding: 2px; font-size: 10px; border: 1px solid #ccc; border-radius: 3px;">
-                        </div>
-                    </div>
-                    <div style="margin-bottom: 8px;">
-                        <label style="font-size: 12px;">位置 (Z轴):</label>
-                        <div style="display: flex; gap: 3px; align-items: center;">
-                            <div class="slider-container" style="flex: 1;">
-                                <input type="range" id="cuttingPosZ" min="-10" max="30" step="0.001" value="0" style="width: 100%;">
-                                <span class="slider-value" id="cuttingPosZValue">0</span>
-                            </div>
-                            <input type="number" id="cuttingPosZInput" min="-10" max="30" step="0.001" value="0" 
-                                   style="width: 60px; padding: 2px; font-size: 10px; border: 1px solid #ccc; border-radius: 3px;">
-                        </div>
-                    </div>
-                    <div style="margin-bottom: 8px;">
-                        <label style="font-size: 12px;">法向量 (X轴):</label>
-                        <div style="display: flex; gap: 3px; align-items: center;">
-                            <div class="slider-container" style="flex: 1;">
-                                <input type="range" id="cuttingNormalX" min="-1" max="1" step="0.001" value="1" style="width: 100%;">
-                                <span class="slider-value" id="cuttingNormalXValue">1</span>
-                            </div>
-                            <input type="number" id="cuttingNormalXInput" min="-1" max="1" step="0.001" value="1" 
-                                   style="width: 60px; padding: 2px; font-size: 10px; border: 1px solid #ccc; border-radius: 3px;">
-                        </div>
-                    </div>
-                    <div style="margin-bottom: 8px;">
-                        <label style="font-size: 12px;">法向量 (Y轴):</label>
-                        <div style="display: flex; gap: 3px; align-items: center;">
-                            <div class="slider-container" style="flex: 1;">
-                                <input type="range" id="cuttingNormalY" min="-1" max="1" step="0.001" value="0" style="width: 100%;">
-                                <span class="slider-value" id="cuttingNormalYValue">0</span>
-                            </div>
-                            <input type="number" id="cuttingNormalYInput" min="-1" max="1" step="0.001" value="0" 
-                                   style="width: 60px; padding: 2px; font-size: 10px; border: 1px solid #ccc; border-radius: 3px;">
-                        </div>
-                    </div>
-                    <div style="margin-bottom: 8px;">
-                        <label style="font-size: 12px;">法向量 (Z轴):</label>
-                        <div style="display: flex; gap: 3px; align-items: center;">
-                            <div class="slider-container" style="flex: 1;">
-                                <input type="range" id="cuttingNormalZ" min="-1" max="1" step="0.001" value="0" style="width: 100%;">
-                                <span class="slider-value" id="cuttingNormalZValue">0</span>
-                            </div>
-                            <input type="number" id="cuttingNormalZInput" min="-1" max="1" step="0.001" value="0" 
-                                   style="width: 60px; padding: 2px; font-size: 10px; border: 1px solid #ccc; border-radius: 3px;">
-                        </div>
-                    </div>
-                    <div style="margin-bottom: 8px;">
-                        <label style="font-size: 12px;">快速设置切割方向:</label>
-                        <div style="display: flex; gap: 5px; margin-top: 5px;">
-                            <button id="setNormalX" 
-                                    style="flex: 1; background: #dc3545; color: white; border: none; padding: 5px; border-radius: 3px; font-size: 11px; user-select: none;"
-                                    title="设置X轴切割">X轴切割</button>
-                            <button id="setNormalY" 
-                                    style="flex: 1; background: #28a745; color: white; border: none; padding: 5px; border-radius: 3px; font-size: 11px; user-select: none;"
-                                    title="设置Y轴切割">Y轴切割</button>
-                            <button id="setNormalZ" 
-                                    style="flex: 1; background: #007bff; color: white; border: none; padding: 5px; border-radius: 3px; font-size: 11px; user-select: none;"
-                                    title="设置Z轴切割">Z轴切割</button>
-                        </div>
-                    </div>
-                    <div style="margin-bottom: 8px;">
-                        <label style="font-size: 12px;">切割平面旋转:</label>
-                        <div style="display: flex; gap: 5px; margin-top: 5px;">
-                            <button id="rotateCuttingPlaneX" 
-                                    style="flex: 1; background: #17a2b8; color: white; border: none; padding: 5px; border-radius: 3px; font-size: 11px; user-select: none;"
-                                    title="按住旋转X轴">绕X轴旋转</button>
-                            <button id="rotateCuttingPlaneY" 
-                                    style="flex: 1; background: #ffc107; color: #212529; border: none; padding: 5px; border-radius: 3px; font-size: 11px; user-select: none;"
-                                    title="按住旋转Y轴">绕Y轴旋转</button>
-                            <button id="rotateCuttingPlaneZ" 
-                                    style="flex: 1; background: #fd7e14; color: white; border: none; padding: 5px; border-radius: 3px; font-size: 11px; user-select: none;"
-                                    title="按住旋转Z轴">绕Z轴旋转</button>
-                        </div>
-                    </div>
-                    <div style="margin-bottom: 8px;">
-                        <label style="font-size: 12px;">3D控制器 (直接拖拽操作):</label>
-                        <div style="background: #e8f4fd; border: 1px solid #b8daff; border-radius: 5px; padding: 8px; margin-top: 5px;">
-                            <div style="display: flex; gap: 5px; margin-bottom: 5px;">
-                                <button id="toggleCuttingTransform" 
-                                        style="flex: 1; background: #007bff; color: white; border: none; padding: 5px; border-radius: 3px; font-size: 11px; user-select: none;"
-                                        title="显示/隐藏3D控制器">显示控制器</button>
-                            </div>
-                            <div style="display: flex; gap: 5px;">
-                                <button id="setCuttingTransformModeRotate" 
-                                        style="flex: 1; background: #28a745; color: white; border: none; padding: 5px; border-radius: 3px; font-size: 11px; user-select: none;"
-                                        title="旋转模式 - 拖拽圆环旋转平面">🔄 旋转</button>
-                                <button id="setCuttingTransformModeTranslate" 
-                                        style="flex: 1; background: #ffc107; color: #212529; border: none; padding: 5px; border-radius: 3px; font-size: 11px; user-select: none;"
-                                        title="移动模式 - 拖拽箭头移动平面">🎯 移动</button>
+                            <div class="modal-footer">
+                                <button id="cancelSaveConfig">取消</button>
+                                <button id="confirmSaveConfig" class="primary">保存</button>
                             </div>
                         </div>
                     </div>
-                     <div style="margin-bottom: 8px;">
-                         <label style="font-size: 12px; display: flex; align-items: center; gap: 5px;">
-                             <input type="checkbox" id="useCSG" style="margin: 0;">
-                             使用CSG引擎切割（暂不推荐） 
-                         </label>
-                     </div>
-                     <div style="margin-bottom: 8px;">
-                         <label style="font-size: 12px;">切割模式（仅几何体切割时有效）:</label>
-                         <select id="capMode" style="width: 100%; padding: 4px; font-size: 11px;">
-                             <option value="seal" selected>封闭缺口并切割（标准模式）</option>
-                             <option value="cut">只切割不封闭（适用于已缺口的图形）</option>
-                         </select>
-                     </div>
-                     <div style="margin-bottom: 8px;">
-                         <label style="font-size: 12px; display: flex; align-items: center; gap: 5px;">
-                             <input type="checkbox" id="autoClearCuttingPlane" checked style="margin: 0;">
-                             切割完成后自动清除切割平面
-                         </label>
-                     </div>
-                    <div style="display: flex; gap: 5px; margin-top: 8px;">
-                        <button id="applyCuttingPlane" style="flex: 1; background: #28a745; color: white; border: none; padding: 5px; border-radius: 3px; font-size: 12px;">应用切割</button>
-                        <button id="resetCuttingPlane" style="flex: 1; background: #6c757d; color: white; border: none; padding: 5px; border-radius: 3px; font-size: 12px;">重置</button>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="control-group">
-                <label>切割平面列表:</label>
-                <div id="cuttingPlanesList" style="max-height: 80px; overflow-y: auto; border: 1px solid #ddd; border-radius: 5px; padding: 5px;"></div>
-            </div>
 
-            <div class="section-title">✂️ 切割预览</div>
-            <div class="control-group">
-                <button id="toggleCuttingPreview">切割预览窗口</button>
-            </div>
+                    <!-- 加载配置对话框 -->
+                    <div id="loadConfigModal" class="modal-overlay" style="display: none;">
+                        <div class="modal-content">
+                            <h3 style="margin: 0 0 16px 0; font-size: 16px; color: #37352f;">加载配置</h3>
+                            <div style="margin-bottom: 16px;">
+                                <label style="display: block; margin-bottom: 8px; font-size: 12px; color: #6b6b6b;">加载模式:</label>
+                                <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; cursor: pointer;">
+                                    <input type="radio" name="loadMode" value="overwrite" checked>
+                                    <div>
+                                        <div style="font-size: 13px; color: #37352f;">覆盖模式</div>
+                                        <div style="font-size: 11px; color: #9b9b9b;">清除当前图形，加载配置</div>
+                                    </div>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <input type="radio" name="loadMode" value="append">
+                                    <div>
+                                        <div style="font-size: 13px; color: #37352f;">追加模式</div>
+                                        <div style="font-size: 11px; color: #9b9b9b;">保留当前图形，追加配置</div>
+                                    </div>
+                                </label>
+                            </div>
+                            <div id="loadConfigInfo" style="display: none; margin-bottom: 16px; padding: 10px; background: #fafafa; border-radius: 4px; font-size: 12px; color: #6b6b6b;"></div>
+                            <div class="modal-footer">
+                                <button id="cancelLoadConfig">取消</button>
+                                <button id="confirmLoadConfig" class="primary">加载</button>
+                            </div>
+                        </div>
+                    </div>
 
-            <div class="control-group">
-                <div id="shapeInfo" style="background: #f8f9fa; padding: 8px; border-radius: 5px; font-size: 12px; color: #666;">
-                    点击图形进行选择
-                </div>
-            </div>
-             
-            <div class="control-group" id="transformModeControls" style="display: none;">
-                <label>变换模式:</label>
-                <div style="display: flex; gap: 5px;">
-                    <button id="setTranslateMode" style="flex: 1; background: #007bff; color: white; border: none; padding: 8px; border-radius: 3px; font-size: 12px; cursor: pointer;">🎯 移动 (W)</button>
-                    <button id="setRotateMode" style="flex: 1; background: #28a745; color: white; border: none; padding: 8px; border-radius: 3px; font-size: 12px; cursor: pointer;">🔄 旋转 (E)</button>
-                    <button id="setScaleMode" style="flex: 1; background: #ffc107; color: white; border: none; padding: 8px; border-radius: 3px; font-size: 12px; cursor: pointer;">📐 缩放 (R)</button>
-                </div>
-            </div>
-             
-            <div class="control-group" id="shapePositionControls" style="display: none;">
-                <label>图形位置调整:</label>
-                <div style="border: 1px solid #ddd; border-radius: 5px; padding: 8px; background: #f8f9fa;">
-                    <div style="margin-bottom: 8px;">
-                        <label style="font-size: 12px; color: #dc3545;">X轴位置:</label>
-                        <div class="slider-container">
-                            <input type="range" id="posX" min="0" max="20" step="0.1" value="10" style="width: 100%;">
-                            <span class="slider-value" id="posXValue">10.0</span>
+                    <div class="control-section">
+                        <div class="section-label">图形颜色</div>
+                        <select id="colorSelect">
+                            <option value="blue">蓝色</option>
+                            <option value="red">红色</option>
+                            <option value="green">绿色</option>
+                            <option value="purple">紫色</option>
+                            <option value="orange">橙色</option>
+                            <option value="rainbow">彩虹</option>
+                        </select>
+                        <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
+                            <input type="color" id="globalColorPicker" value="#3742fa">
+                            <button id="applyGlobalColor" style="flex: 1;">应用到所有</button>
                         </div>
                     </div>
-                    <div style="margin-bottom: 8px;">
-                        <label style="font-size: 12px; color: #28a745;">Y轴位置:</label>
-                        <div class="slider-container">
-                            <input type="range" id="posY" min="0" max="20" step="0.1" value="5" style="width: 100%;">
-                            <span class="slider-value" id="posYValue">5.0</span>
-                        </div>
-                    </div>
-                    <div style="margin-bottom: 8px;">
-                        <label style="font-size: 12px; color: #007bff;">Z轴位置:</label>
-                        <div class="slider-container">
-                            <input type="range" id="posZ" min="0" max="20" step="0.1" value="10" style="width: 100%;">
-                            <span class="slider-value" id="posZValue">10.0</span>
-                        </div>
-                    </div>
-                    <div style="display: flex; gap: 5px; margin-top: 8px;">
-                        <button id="resetPosition" style="flex: 1; background: #6c757d; color: white; border: none; padding: 5px; border-radius: 3px; font-size: 12px;">重置位置</button>
-                    </div>
-                </div>
-            </div>
 
-            <div class="control-group" id="shapeSizeControls" style="display: none;">
-                <label>图形大小调整:</label>
-                <div style="border: 1px solid #ddd; border-radius: 5px; padding: 8px; background: #f8f9fa;">
-                    <div style="margin-bottom: 8px;">
-                        <label style="font-size: 12px;">X轴缩放:</label>
-                        <div class="slider-container">
-                            <input type="range" id="scaleX" min="0.1" max="3" step="0.1" value="1" style="width: 100%;">
-                            <span class="slider-value" id="scaleXValue">1.0</span>
+                    <div class="control-section" id="materialControls" style="display: none;">
+                        <div class="section-label">材质参数</div>
+                        <div style="margin-bottom: 8px;">
+                            <div class="slider-container">
+                                <span style="font-size: 11px; width: 50px;">金属度:</span>
+                                <input type="range" id="metalness" min="0" max="1" step="0.01" value="0.15">
+                                <span class="slider-value" id="metalnessValue">0.15</span>
+                            </div>
                         </div>
-                    </div>
-                    <div style="margin-bottom: 8px;">
-                        <label style="font-size: 12px;">Y轴缩放:</label>
-                        <div class="slider-container">
-                            <input type="range" id="scaleY" min="0.1" max="3" step="0.1" value="1" style="width: 100%;">
-                            <span class="slider-value" id="scaleYValue">1.0</span>
+                        <div style="margin-bottom: 8px;">
+                            <div class="slider-container">
+                                <span style="font-size: 11px; width: 50px;">粗糙度:</span>
+                                <input type="range" id="roughness" min="0" max="1" step="0.01" value="0.25">
+                                <span class="slider-value" id="roughnessValue">0.25</span>
+                            </div>
                         </div>
-                    </div>
-                    <div style="margin-bottom: 8px;">
-                        <label style="font-size: 12px;">Z轴缩放:</label>
-                        <div class="slider-container">
-                            <input type="range" id="scaleZ" min="0.1" max="3" step="0.1" value="1" style="width: 100%;">
-                            <span class="slider-value" id="scaleZValue">1.0</span>
+                        <div style="margin-bottom: 8px;">
+                            <div class="slider-container">
+                                <span style="font-size: 11px; width: 50px;">透明度:</span>
+                                <input type="range" id="opacity" min="0" max="1" step="0.01" value="0.95">
+                                <span class="slider-value" id="opacityValue">0.95</span>
+                            </div>
                         </div>
+                        <div style="margin-bottom: 8px;">
+                            <div class="slider-container">
+                                <span style="font-size: 11px; width: 50px;">清漆层:</span>
+                                <input type="range" id="clearcoat" min="0" max="1" step="0.01" value="0.3">
+                                <span class="slider-value" id="clearcoatValue">0.30</span>
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 8px;">
+                            <div class="slider-container">
+                                <span style="font-size: 11px; width: 50px;">反光度:</span>
+                                <input type="range" id="reflectivity" min="0" max="1" step="0.01" value="0.5">
+                                <span class="slider-value" id="reflectivityValue">0.50</span>
+                            </div>
+                        </div>
+                        <button id="resetMaterial" style="width: 100%;">重置材质</button>
                     </div>
-                    <div style="display: flex; gap: 5px; margin-top: 8px;">
-                        <button id="resetScale" style="flex: 1; background: #6c757d; color: white; border: none; padding: 5px; border-radius: 3px; font-size: 12px;">重置大小</button>
-                        <button id="uniformScale" style="flex: 1; background: #17a2b8; color: white; border: none; padding: 5px; border-radius: 3px; font-size: 12px;">等比缩放</button>
-                    </div>
-                </div>
-            </div>
 
-            <div class="section-title">💾 配置管理</div>
-            <div class="control-group">
-                <div class="config-management-buttons">
-                    <button id="saveConfig">保存当前配置</button>
-                    <button id="loadSingleConfig">选择单个配置文件</button>
-                    <button id="loadConfigFolder">选择配置文件夹</button>
-                </div>
-                <input type="file" id="singleConfigInput" style="display: none;" accept=".json">
-                <input type="file" id="configFolderInput" webkitdirectory directory multiple style="display: none;" accept=".json">
-            </div>
-
-            <div class="control-group" id="configListGroup">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 5px;">
-                    <label style="margin: 0;">配置文件列表:</label>
-                    <div style="display: flex; gap: 5px;">
-                        <button id="refreshConfigs" style="padding: 4px 8px; font-size: 11px; background: #2196f3; color: white; border: none; border-radius: 3px; cursor: pointer;" title="重新加载配置文件">刷新</button>
-                        <button id="resetToDefaultConfig" style="padding: 4px 8px; font-size: 11px; background: #ff9800; color: white; border: none; border-radius: 3px; cursor: pointer;">重置默认</button>
-                        <button id="clearConfigList" style="padding: 4px 8px; font-size: 11px; background: #6c757d; color: white; border: none; border-radius: 3px; cursor: pointer;">清空列表</button>
-                    </div>
-                </div>
-                <div style="margin-bottom: 8px;">
-                    <input type="text" id="configSearchInput" placeholder="搜索配置文件（支持关键字）..."
-                           style="width: 100%; padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px;">
-                </div>
-                <div id="configList" style="max-height: 300px; overflow-y: auto;"></div>
-                <div id="configListPlaceholder" style="padding: 20px; text-align: center; color: #999; font-size: 13px;">
-                    <div style="font-size: 24px; margin-bottom: 8px;">📁</div>
-                    <div>配置列表为空</div>
-                    <div style="font-size: 11px; margin-top: 4px;">点击"刷新"按钮加载配置文件</div>
-                </div>
-            </div>
-
-            <!-- 保存配置对话框 -->
-            <div id="saveConfigModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
-                <div style="background: white; border-radius: 8px; padding: 20px; width: 400px; max-width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-                    <h3 style="margin: 0 0 15px 0; color: #333;">保存配置</h3>
-                    <div style="margin-bottom: 15px;">
-                        <label style="display: block; margin-bottom: 5px; font-weight: 500; color: #555;">配置名称:</label>
-                        <input type="text" id="configNameInput" placeholder="输入配置名称（如：我的场景）"
-                               style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
-                    </div>
-                    <div style="margin-bottom: 15px; padding: 10px; background: #fff3e0; border-radius: 4px; border-left: 3px solid #ff9800;">
-                        <div style="font-size: 12px; color: #f57c00;">
-                            <strong>⚠️ 提示:</strong> 由于浏览器安全限制，配置文件将通过浏览器的下载对话框保存。文件将保存到默认下载文件夹，您可以在下载后手动移动到 desired 位置。
+                    <div class="control-section">
+                        <div class="section-label">光照系统</div>
+                        <div style="margin-bottom: 8px;">
+                            <div class="slider-container">
+                                <span style="font-size: 11px; width: 50px;">主光源:</span>
+                                <input type="range" id="mainLightIntensity" min="0" max="3" step="0.1" value="1.2">
+                                <span class="slider-value" id="mainLightIntensityValue">1.2</span>
+                            </div>
                         </div>
-                    </div>
-                    <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                        <button id="cancelSaveConfig" style="padding: 8px 20px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">取消</button>
-                        <button id="confirmSaveConfig" style="padding: 8px 20px; background: #4caf50; color: white; border: none; border-radius: 4px; cursor: pointer;">保存</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 加载配置对话框 -->
-            <div id="loadConfigModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
-                <div style="background: white; border-radius: 8px; padding: 20px; width: 400px; max-width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-                    <h3 style="margin: 0 0 15px 0; color: #333;">加载配置</h3>
-                    <div style="margin-bottom: 15px;">
-                        <label style="display: block; margin-bottom: 5px; font-weight: 500; color: #555;">加载模式:</label>
-                        <div style="display: flex; flex-direction: column; gap: 10px;">
-                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                                <input type="radio" name="loadMode" value="overwrite" checked>
-                                <div>
-                                    <div style="font-weight: 500; color: #333;">覆盖模式</div>
-                                    <div style="font-size: 12px; color: #666;">清除当前所有图形，加载配置中的图形</div>
-                                </div>
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                                <input type="radio" name="loadMode" value="append">
-                                <div>
-                                    <div style="font-weight: 500; color: #333;">追加模式</div>
-                                    <div style="font-size: 12px; color: #666;">保留当前图形，追加配置中的图形（重名自动适配）</div>
-                                </div>
-                            </label>
+                        <div style="margin-bottom: 8px;">
+                            <div class="slider-container">
+                                <span style="font-size: 11px; width: 50px;">环境光:</span>
+                                <input type="range" id="ambientLightIntensity" min="0" max="2" step="0.1" value="0.5">
+                                <span class="slider-value" id="ambientLightIntensityValue">0.5</span>
+                            </div>
                         </div>
-                    </div>
-                    <div id="loadConfigInfo" style="margin-bottom: 15px; padding: 10px; background: #f5f5f5; border-radius: 4px; font-size: 12px; color: #666; display: none;">
-                    </div>
-                    <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                        <button id="cancelLoadConfig" style="padding: 8px 20px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">取消</button>
-                        <button id="confirmLoadConfig" style="padding: 8px 20px; background: #4caf50; color: white; border: none; border-radius: 4px; cursor: pointer;">加载</button>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="section-title">🎨 视觉效果</div>
-            <div class="control-group">
-                <label for="colorSelect">图形颜色主题:</label>
-                <select id="colorSelect">
-                    <option value="blue">蓝色</option>
-                    <option value="red">红色</option>
-                    <option value="green">绿色</option>
-                    <option value="purple">紫色</option>
-                    <option value="orange">橙色</option>
-                    <option value="rainbow">彩虹</option>
-                </select>
-            </div>
-            
-            <div class="control-group">
-                <label for="globalColorPicker">批量更新所有图形颜色:</label>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <input type="color" id="globalColorPicker" value="#3742fa"
-                           style="width: 40px; height: 30px; border: none; border-radius: 5px; cursor: pointer;"
-                           title="选择颜色">
-                    <button id="applyGlobalColor"
-                            style="flex: 1; background: linear-gradient(45deg, #5352ed, #3742fa); color: white; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer; font-size: 12px;"
-                            title="应用到所有图形">应用到所有</button>
-                </div>
-            </div>
-
-            <div class="control-group" id="materialControls" style="display: none;">
-                <label style="font-weight: bold; color: #333;">材质参数控制</label>
-                <div style="border: 1px solid #ddd; border-radius: 5px; padding: 10px; background: #f8f9fa; margin-top: 8px;">
-                    <div style="margin-bottom: 10px;">
-                        <label style="font-size: 12px; color: #666;">金属度 (Metalness):</label>
-                        <div class="slider-container">
-                            <input type="range" id="metalness" min="0" max="1" step="0.01" value="0.15" style="width: 100%;">
-                            <span class="slider-value" id="metalnessValue">0.15</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="color" id="mainLightColor" value="#ffffff">
+                            <span style="font-size: 11px; color: #6b6b6b;">光源颜色</span>
                         </div>
-                    </div>
-                    <div style="margin-bottom: 10px;">
-                        <label style="font-size: 12px; color: #666;">粗糙度 (Roughness):</label>
-                        <div class="slider-container">
-                            <input type="range" id="roughness" min="0" max="1" step="0.01" value="0.25" style="width: 100%;">
-                            <span class="slider-value" id="roughnessValue">0.25</span>
-                        </div>
-                    </div>
-                    <div style="margin-bottom: 10px;">
-                        <label style="font-size: 12px; color: #666;">透明度 (Opacity):</label>
-                        <div class="slider-container">
-                            <input type="range" id="opacity" min="0" max="1" step="0.01" value="0.95" style="width: 100%;">
-                            <span class="slider-value" id="opacityValue">0.95</span>
-                        </div>
-                    </div>
-                    <div style="margin-bottom: 10px;">
-                        <label style="font-size: 12px; color: #666;">清漆层 (Clearcoat):</label>
-                        <div class="slider-container">
-                            <input type="range" id="clearcoat" min="0" max="1" step="0.01" value="0.3" style="width: 100%;">
-                            <span class="slider-value" id="clearcoatValue">0.30</span>
-                        </div>
-                    </div>
-                    <div style="margin-bottom: 10px;">
-                        <label style="font-size: 12px; color: #666;">反光度 (Reflectivity):</label>
-                        <div class="slider-container">
-                            <input type="range" id="reflectivity" min="0" max="1" step="0.01" value="0.5" style="width: 100%;">
-                            <span class="slider-value" id="reflectivityValue">0.50</span>
-                        </div>
-                    </div>
-                    <button id="resetMaterial" style="width: 100%; margin-top: 8px; background: #6c757d; color: white; border: none; padding: 6px; border-radius: 3px; font-size: 11px; cursor: pointer;">重置材质参数</button>
-                </div>
-            </div>
-
-            <div class="control-group">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <label style="font-weight: bold; color: #333;">光照系统</label>
-                    <button id="toggleLighting" style="padding: 2px 6px; font-size: 10px; background: #2196f3; color: white; border: none; border-radius: 3px; cursor: pointer;">展开</button>
-                </div>
-                <div id="lightingSettings" style="border: 1px solid #ddd; border-radius: 5px; padding: 10px; background: #f8f9fa; margin-top: 8px; display: none;">
-                    <div style="margin-bottom: 10px;">
-                        <label style="font-size: 12px; color: #666;">主光源强度:</label>
-                        <div class="slider-container">
-                            <input type="range" id="mainLightIntensity" min="0" max="3" step="0.1" value="1.2" style="width: 100%;">
-                            <span class="slider-value" id="mainLightIntensityValue">1.2</span>
-                        </div>
-                    </div>
-                    <div style="margin-bottom: 10px;">
-                        <label style="font-size: 12px; color: #666;">环境光强度:</label>
-                        <div class="slider-container">
-                            <input type="range" id="ambientLightIntensity" min="0" max="2" step="0.1" value="0.5" style="width: 100%;">
-                            <span class="slider-value" id="ambientLightIntensityValue">0.5</span>
-                        </div>
-                    </div>
-                    <div style="margin-bottom: 10px;">
-                        <label style="font-size: 12px; color: #666;">主光源颜色:</label>
-                        <div style="display: flex; align-items: center; gap: 8px; margin-top: 5px;">
-                            <input type="color" id="mainLightColor" value="#ffffff"
-                                   style="width: 40px; height: 30px; border: none; border-radius: 5px; cursor: pointer;">
-                            <span id="mainLightColorValue" style="font-size: 11px; color: #666;">#ffffff</span>
-                        </div>
-                    </div>
-                    <div style="margin-bottom: 10px;">
-                        <label style="font-size: 12px; color: #666;">光源位置 X:</label>
-                        <div class="slider-container">
-                            <input type="range" id="lightPositionX" min="-30" max="30" step="1" value="15" style="width: 100%;">
+                        <div style="margin-top: 8px; display: flex; gap: 6px;">
+                            <input type="range" id="lightPositionX" min="-30" max="30" step="1" value="15" style="flex:1">
                             <span class="slider-value" id="lightPositionXValue">15</span>
                         </div>
-                    </div>
-                    <div style="margin-bottom: 10px;">
-                        <label style="font-size: 12px; color: #666;">光源位置 Y:</label>
-                        <div class="slider-container">
-                            <input type="range" id="lightPositionY" min="0" max="50" step="1" value="15" style="width: 100%;">
+                        <div style="margin-top: 4px; display: flex; gap: 6px;">
+                            <input type="range" id="lightPositionY" min="0" max="50" step="1" value="15" style="flex:1">
                             <span class="slider-value" id="lightPositionYValue">15</span>
                         </div>
-                    </div>
-                    <div style="margin-bottom: 10px;">
-                        <label style="font-size: 12px; color: #666;">光源位置 Z:</label>
-                        <div class="slider-container">
-                            <input type="range" id="lightPositionZ" min="-30" max="30" step="1" value="10" style="width: 100%;">
+                        <div style="margin-top: 4px; display: flex; gap: 6px;">
+                            <input type="range" id="lightPositionZ" min="-30" max="30" step="1" value="10" style="flex:1">
                             <span class="slider-value" id="lightPositionZValue">10</span>
                         </div>
+                        <button id="resetLighting" style="width: 100%; margin-top: 8px;">重置光照</button>
                     </div>
-                    <button id="resetLighting" style="width: 100%; margin-top: 8px; background: #6c757d; color: white; border: none; padding: 6px; border-radius: 3px; font-size: 11px; cursor: pointer;">重置光照</button>
-                </div>
-            </div>
 
-            <div class="control-group">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <label style="font-weight: bold; color: #333;">环境设置</label>
-                    <button id="toggleEnvironment" style="padding: 2px 6px; font-size: 10px; background: #2196f3; color: white; border: none; border-radius: 3px; cursor: pointer;">展开</button>
-                </div>
-                <div id="environmentSettings" style="border: 1px solid #ddd; border-radius: 5px; padding: 10px; background: #f8f9fa; margin-top: 8px; display: none;">
-                    <div style="margin-bottom: 10px;">
-                        <label style="font-size: 12px; color: #666;">背景颜色:</label>
-                        <div style="display: flex; align-items: center; gap: 8px; margin-top: 5px;">
-                            <input type="color" id="backgroundColor" value="#f0f0f0"
-                                   style="width: 40px; height: 30px; border: none; border-radius: 5px; cursor: pointer;">
-                            <span id="backgroundColorValue" style="font-size: 11px; color: #666;">#f0f0f0</span>
+                    <div class="control-section">
+                        <div class="section-label">环境设置</div>
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                            <input type="color" id="backgroundColor" value="#f0f0f0">
+                            <span style="font-size: 11px; color: #6b6b6b;">背景颜色</span>
                         </div>
-                    </div>
-                    <div style="margin-bottom: 10px;">
-                        <label style="font-size: 12px; color: #666;">网格颜色:</label>
-                        <div style="display: flex; align-items: center; gap: 8px; margin-top: 5px;">
-                            <input type="color" id="gridColor" value="#444444"
-                                   style="width: 40px; height: 30px; border: none; border-radius: 5px; cursor: pointer;">
-                            <span id="gridColorValue" style="font-size: 11px; color: #666;">#444444</span>
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                            <input type="color" id="gridColor" value="#444444">
+                            <span style="font-size: 11px; color: #6b6b6b;">网格颜色</span>
                         </div>
-                    </div>
-                    <div style="margin-bottom: 10px;">
-                        <label style="font-size: 12px; color: #666;">网格大小:</label>
-                        <div class="slider-container">
-                            <input type="range" id="gridSize" min="10" max="50" step="5" value="20" style="width: 100%;">
-                            <span class="slider-value" id="gridSizeValue">20</span>
+                        <div style="margin-bottom: 8px;">
+                            <div class="slider-container">
+                                <span style="font-size: 11px; width: 50px;">网格:</span>
+                                <input type="range" id="gridSize" min="10" max="50" step="5" value="20">
+                                <span class="slider-value" id="gridSizeValue">20</span>
+                            </div>
                         </div>
+                        <button id="resetEnvironment" style="width: 100%;">重置环境</button>
                     </div>
-                    <button id="resetEnvironment" style="width: 100%; margin-top: 8px; background: #6c757d; color: white; border: none; padding: 6px; border-radius: 3px; font-size: 11px; cursor: pointer;">重置环境</button>
-                </div>
-            </div>
 
-            <div class="control-group" id="geometryControls" style="display: none;">
-                <label style="font-weight: bold; color: #333;">图形尺寸参数</label>
-                <div style="border: 1px solid #ddd; border-radius: 5px; padding: 10px; background: #f8f9fa; margin-top: 8px;">
-                    <div id="geometryParams" style="font-size: 11px; color: #666; margin-bottom: 10px; padding: 8px; background: #e8f4fd; border-radius: 3px;">
-                        请先选择一个图形
+                    <div class="control-section" id="geometryControls" style="display: none;">
+                        <div class="section-label">图形尺寸参数</div>
+                        <div id="geometryParams" style="font-size: 11px; color: #6b6b6b; margin-bottom: 8px; padding: 8px; background: #fafafa; border-radius: 4px;">
+                            请先选择一个图形
+                        </div>
+                        <div id="geometrySliders"></div>
+                        <button id="applyGeometryChanges" class="primary" style="width: 100%; margin-top: 8px;">应用尺寸更改</button>
                     </div>
-                    <div id="geometrySliders"></div>
-                    <button id="applyGeometryChanges" style="width: 100%; margin-top: 8px; background: #28a745; color: white; border: none; padding: 6px; border-radius: 3px; font-size: 11px; cursor: pointer;">应用尺寸更改</button>
+
+                    <div class="control-section" id="transformModeControls" style="display: none;">
+                        <div class="section-label">变换模式</div>
+                        <div style="display: flex; gap: 6px;">
+                            <button id="setTranslateMode" style="flex: 1;">移动 (W)</button>
+                            <button id="setRotateMode" style="flex: 1;">旋转 (E)</button>
+                            <button id="setScaleMode" style="flex: 1;">缩放 (R)</button>
+                        </div>
+                    </div>
+
+                    <div class="control-section" id="shapePositionControls" style="display: none;">
+                        <div class="section-label">图形位置</div>
+                        <div style="margin-bottom: 8px;">
+                            <div class="slider-container">
+                                <span style="font-size: 11px; color: #d73a49; width: 20px;">X:</span>
+                                <input type="range" id="posX" min="0" max="20" step="0.1" value="10">
+                                <span class="slider-value" id="posXValue">10.0</span>
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 8px;">
+                            <div class="slider-container">
+                                <span style="font-size: 11px; color: #28a745; width: 20px;">Y:</span>
+                                <input type="range" id="posY" min="0" max="20" step="0.1" value="5">
+                                <span class="slider-value" id="posYValue">5.0</span>
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 8px;">
+                            <div class="slider-container">
+                                <span style="font-size: 11px; color: #007bff; width: 20px;">Z:</span>
+                                <input type="range" id="posZ" min="0" max="20" step="0.1" value="10">
+                                <span class="slider-value" id="posZValue">10.0</span>
+                            </div>
+                        </div>
+                        <button id="resetPosition" style="width: 100%;">重置位置</button>
+                    </div>
+
+                    <div class="control-section" id="shapeSizeControls" style="display: none;">
+                        <div class="section-label">图形大小</div>
+                        <div style="margin-bottom: 8px;">
+                            <div class="slider-container">
+                                <span style="font-size: 11px; width: 20px;">X:</span>
+                                <input type="range" id="scaleX" min="0.1" max="3" step="0.1" value="1">
+                                <span class="slider-value" id="scaleXValue">1.0</span>
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 8px;">
+                            <div class="slider-container">
+                                <span style="font-size: 11px; width: 20px;">Y:</span>
+                                <input type="range" id="scaleY" min="0.1" max="3" step="0.1" value="1">
+                                <span class="slider-value" id="scaleYValue">1.0</span>
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 8px;">
+                            <div class="slider-container">
+                                <span style="font-size: 11px; width: 20px;">Z:</span>
+                                <input type="range" id="scaleZ" min="0.1" max="3" step="0.1" value="1">
+                                <span class="slider-value" id="scaleZValue">1.0</span>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 6px;">
+                            <button id="resetScale" style="flex: 1;">重置</button>
+                            <button id="uniformScale" style="flex: 1;">等比</button>
+                        </div>
+                    </div>
                 </div>
-            </div>
             </div>
         </div>
-        
-        <div id="info">
+
+        <div id="info" style="display: none;">
             <button class="minimize-btn" id="infoMinimizeBtn" title="最小化/展开操作提示">−</button>
                 <div class="info-content">
                     <strong>操作说明:</strong><br>
@@ -1301,6 +1365,17 @@
         </div>
     </div>
     
+
+        <!-- 底部状态栏 -->
+        <div id="statusbar">
+            <div class="shortcuts">
+                <span>左键: 旋转</span>
+                <span>右键: 平移</span>
+                <span>滚轮: 缩放</span>
+                <span>Delete: 删除</span>
+            </div>
+            <div class="fps" id="fpsCounter">FPS: 60</div>
+        </div>
 
     <!-- 配置管理说明 -->
     <!--

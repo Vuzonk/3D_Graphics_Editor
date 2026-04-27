@@ -1336,14 +1336,14 @@ class Shape3DViewer {
     
     // 初始化帮助系统
     initHelpSystem() {
-        const helpButton = document.getElementById('helpButton');
+        const helpButton = document.getElementById('headerHelpBtn');
         const helpModal = document.getElementById('helpModal');
         const closeHelp = document.getElementById('closeHelp');
-        
+
         if (helpButton && helpModal && closeHelp) {
             // 帮助按钮点击事件
             helpButton.addEventListener('click', () => {
-                helpModal.style.display = 'block';
+                helpModal.style.display = 'flex';
                 document.body.style.overflow = 'hidden'; // 防止背景滚动
             });
             
@@ -1381,7 +1381,63 @@ class Shape3DViewer {
             });
         }
     }
-    
+
+    // 初始化标签页
+    initTabs() {
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        const tabPanels = document.querySelectorAll('.tab-panel');
+        const sidebarIcons = document.querySelectorAll('.sidebar-icons .icon-btn');
+
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tabId = btn.dataset.tab;
+                this.switchTab(tabId, tabBtns, tabPanels);
+            });
+        });
+
+        sidebarIcons.forEach(icon => {
+            icon.addEventListener('click', () => {
+                const tabId = icon.dataset.tab;
+                // 展开侧边栏并切换标签
+                const sidebar = document.getElementById('sidebar');
+                if (sidebar) {
+                    sidebar.classList.remove('collapsed');
+                    const toggleSpan = document.querySelector('.sidebar-toggle span');
+                    if (toggleSpan) toggleSpan.textContent = '◀';
+                }
+                this.switchTab(tabId, tabBtns, tabPanels);
+            });
+        });
+    }
+
+    switchTab(tabId, tabBtns, tabPanels) {
+        tabBtns.forEach(b => b.classList.remove('active'));
+        tabPanels.forEach(p => p.classList.remove('active'));
+
+        const activeBtn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
+        const activePanel = document.getElementById(`tab-${tabId}`);
+
+        if (activeBtn) activeBtn.classList.add('active');
+        if (activePanel) activePanel.classList.add('active');
+    }
+
+    // 初始化侧边栏收起
+    initSidebar() {
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebar = document.getElementById('sidebar');
+
+        if (sidebarToggle && sidebar) {
+            sidebarToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('collapsed');
+                const isCollapsed = sidebar.classList.contains('collapsed');
+                const toggleSpan = sidebarToggle.querySelector('span');
+                if (toggleSpan) {
+                    toggleSpan.textContent = isCollapsed ? '▶' : '◀';
+                }
+            });
+        }
+    }
+
     exitCuttingAdjustMode() {
         // 禁用切割平面TransformControls
         this.disableCuttingPlaneTransform();
@@ -3301,6 +3357,13 @@ class Shape3DViewer {
         
         // 初始化帮助按钮
         this.initHelpSystem();
+
+        // 初始化标签页
+        this.initTabs();
+
+        // 初始化侧边栏收起
+        this.initSidebar();
+
         
         // 复制图形
         document.getElementById('duplicateShape').addEventListener('click', () => {
@@ -4174,7 +4237,13 @@ class Shape3DViewer {
             this.currentFPS = this.frameCount;
             this.frameCount = 0;
             this.lastFPSCheck = now;
-            
+
+            // 更新 FPS 显示
+            const fpsCounter = document.getElementById('fpsCounter');
+            if (fpsCounter) {
+                fpsCounter.textContent = `FPS: ${this.currentFPS}`;
+            }
+
             // 如果FPS低于30，增加低FPS计数
             if (this.currentFPS < 30) {
                 this.lowFPSCount++;
