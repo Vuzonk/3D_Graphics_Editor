@@ -1810,6 +1810,9 @@ class Shape3DViewer {
            // 如果刚刚完成拖拽，不处理点击事件
            if (this.isDragging) return;
 
+           // 变形模式下，由 handleDeformationClick 处理点击
+           if (this.deformationMode) return;
+
            this.updateMousePosition(event);
            this.raycaster.setFromCamera(this.mouse, this.camera);
            const intersects = this.raycaster.intersectObjects(Array.from(this.shapes.values()));
