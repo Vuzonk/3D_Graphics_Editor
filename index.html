@@ -665,6 +665,35 @@
             transition: all 0.15s ease;
         }
 
+        /* 变形编辑工具样式 */
+        .select-mode-btn {
+            flex: 1;
+            padding: 6px 8px;
+            font-size: 11px;
+            border-radius: 4px;
+            transition: all 0.15s ease;
+        }
+
+        .select-mode-btn.active {
+            background: #37352f;
+            color: white;
+            border-color: #37352f;
+        }
+
+        .transform-mode-btn {
+            flex: 1;
+            padding: 6px 8px;
+            font-size: 11px;
+            border-radius: 4px;
+            transition: all 0.15s ease;
+        }
+
+        .transform-mode-btn.active {
+            background: #2eaadc;
+            color: white;
+            border-color: #2eaadc;
+        }
+
         /* 标签样式 */
         label {
             display: block;
@@ -1050,37 +1079,61 @@
                         </div>
                     </div>
 
+                    <!-- 变形编辑工具 -->
                     <div class="control-section">
-                        <button id="toggleVertexEdit" style="width: 100%;">顶点编辑</button>
+                        <button id="toggleDeformation" style="width: 100%;">🔧 变形编辑工具</button>
                     </div>
 
-                    <div class="control-section">
-                        <button id="toggleBoneEdit" style="width: 100%;">骨骼编辑</button>
-                        <button id="addBone" style="display: none; margin-top: 6px; width: 100%;">+ 添加骨骼</button>
-                    </div>
-
-                    <div class="control-section" id="boneControlPanel" style="display: none; background: #fafafa; padding: 10px; border-radius: 4px;">
-                        <div class="section-label">骨骼列表</div>
-                        <div class="list-container" id="boneList" style="max-height: 80px;"></div>
-                        <button id="deleteSelectedBone" class="danger" style="width: 100%; margin-top: 8px;">删除选中的骨骼</button>
-                    </div>
-
-                    <div class="control-section">
-                        <button id="toggleAnchorEdit" style="width: 100%;">锚点编辑</button>
-                        <button id="addAnchor" style="display: none; margin-top: 6px; width: 100%;">+ 添加锚点</button>
-                    </div>
-
-                    <div class="control-section" id="anchorControlPanel" style="display: none; background: #fafafa; padding: 10px; border-radius: 4px;">
-                        <div class="section-label">锚点列表</div>
-                        <div class="list-container" id="anchorList" style="max-height: 80px;"></div>
-                        <div style="margin-top: 8px;">
-                            <div class="section-label">影响半径</div>
-                            <div class="slider-container">
-                                <input type="range" id="anchorInfluenceRadius" min="0.1" max="5.0" step="0.1" value="0.5">
-                                <span class="slider-value" id="anchorInfluenceRadiusValue">0.5</span>
-                            </div>
+                    <div class="control-section" id="deformationPanel" style="display: none; background: #fafafa; padding: 12px; border-radius: 4px;">
+                        <!-- 选择模式 -->
+                        <div class="section-label">选择模式</div>
+                        <div style="display: flex; gap: 4px;">
+                            <button id="selectVertex" class="select-mode-btn active">顶点</button>
+                            <button id="selectEdge" class="select-mode-btn">边</button>
+                            <button id="selectFace" class="select-mode-btn">面</button>
+                            <button id="toggleBoxSelect" class="select-mode-btn">框选</button>
                         </div>
-                        <button id="deleteSelectedAnchor" class="danger" style="width: 100%; margin-top: 8px;">删除选中的锚点</button>
+
+                        <!-- 软选择 -->
+                        <div class="section-label" style="margin-top: 12px;">软选择</div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="softSelectEnabled">
+                            <span style="font-size: 12px;">启用</span>
+                        </div>
+                        <div class="slider-container" style="margin-top: 6px;">
+                            <span style="font-size: 11px;">半径:</span>
+                            <input type="range" id="softSelectRadius" min="0.1" max="10" step="0.1" value="2.5">
+                            <span class="slider-value" id="softSelectRadiusValue">2.5</span>
+                        </div>
+                        <div style="margin-top: 6px;">
+                            <span style="font-size: 11px;">曲线:</span>
+                            <select id="softSelectCurve" style="width: 100%; margin-top: 4px;">
+                                <option value="smooth">平滑</option>
+                                <option value="linear">线性</option>
+                                <option value="sharp">锐利</option>
+                            </select>
+                        </div>
+
+                        <!-- 变换模式 -->
+                        <div class="section-label" style="margin-top: 12px;">变换</div>
+                        <div style="display: flex; gap: 4px;">
+                            <button id="deformTranslate" class="transform-mode-btn active">移动 (W)</button>
+                            <button id="deformRotate" class="transform-mode-btn">旋转 (E)</button>
+                            <button id="deformScale" class="transform-mode-btn">缩放 (R)</button>
+                        </div>
+
+                        <!-- 操作 -->
+                        <div class="section-label" style="margin-top: 12px;">操作</div>
+                        <div style="display: flex; gap: 6px;">
+                            <button id="undoDeform" style="flex: 1;">撤销</button>
+                            <button id="redoDeform" style="flex: 1;">重做</button>
+                        </div>
+                        <button id="resetShape" class="danger" style="width: 100%; margin-top: 6px;">重置形状</button>
+
+                        <!-- 状态信息 -->
+                        <div id="deformStatus" style="margin-top: 12px; padding: 8px; background: #f5f5f5; border-radius: 4px; font-size: 11px; color: #666;">
+                            点击图形进入变形模式
+                        </div>
                     </div>
 
                     <div class="control-section">
