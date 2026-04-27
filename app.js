@@ -7267,7 +7267,8 @@ class Shape3DViewer {
           const btn = document.getElementById('toggleDeformation');
           if (btn) {
               btn.classList.add('mode-active');
-              btn.textContent = '✕ 退出变形编辑';
+              btn.textContent = '退出变形编辑';
+              btn.style.backgroundColor = '#dc3545';
           }
 
           const panel = document.getElementById('deformationPanel');
@@ -7316,7 +7317,8 @@ class Shape3DViewer {
           const btn = document.getElementById('toggleDeformation');
           if (btn) {
               btn.classList.remove('mode-active');
-              btn.textContent = '🔧 变形编辑工具';
+              btn.textContent = '变形编辑';
+              btn.style.backgroundColor = '#007bff';
           }
 
           const panel = document.getElementById('deformationPanel');
@@ -7358,33 +7360,38 @@ class Shape3DViewer {
           }
 
           const sphereGeo = new THREE.SphereGeometry(0.06, 8, 8);
-          const material = new THREE.MeshBasicMaterial({
+          // 使用 MeshStandardMaterial 并启用顶色
+          const material = new THREE.MeshStandardMaterial({
               vertexColors: true,
               transparent: true,
-              opacity: 0.7
+              opacity: 0.9,
+              metalness: 0.1,
+              roughness: 0.5
           });
 
           this.deformationHandles = new THREE.InstancedMesh(sphereGeo, material, pos.count);
           this.deformationHandles.userData.isDeformationHandles = true;
 
           const matrix = new THREE.Matrix4();
-          const color = new THREE.Color(0x00ff00);
+          const defaultColor = new THREE.Color(0x00ff00);
 
           for (let i = 0; i < pos.count; i++) {
               const v = new THREE.Vector3().fromBufferAttribute(pos, i);
               v.applyMatrix4(this.selectedShape.matrixWorld);
               matrix.setPosition(v);
               this.deformationHandles.setMatrixAt(i, matrix);
-              this.deformationHandles.setColorAt(i, color);
+              this.deformationHandles.setColorAt(i, defaultColor);
           }
 
           this.deformationHandles.instanceMatrix.needsUpdate = true;
-          this.deformationHandles.instanceColor.needsUpdate = true;
+          if (this.deformationHandles.instanceColor) {
+              this.deformationHandles.instanceColor.needsUpdate = true;
+          }
           this.scene.add(this.deformationHandles);
       }
 
       updateVertexHandleColors() {
-          if (!this.deformationHandles) return;
+          if (!this.deformationHandles || !this.deformationHandles.instanceColor) return;
 
           const color = new THREE.Color();
           const selectedColor = new THREE.Color(0xff0000);
