@@ -6840,16 +6840,20 @@ class Shape3DViewer {
           this.booleanMode = !this.booleanMode;
           const toggleBtn = document.getElementById('toggleBoolean');
           const booleanPanel = document.getElementById('booleanPanel');
-          
+
           if (this.booleanMode) {
               toggleBtn.textContent = '退出布尔运算';
-              toggleBtn.style.backgroundColor = '#dc3545';
+              toggleBtn.style.backgroundColor = '#37352f';
+              toggleBtn.style.color = '#ffffff';
+              toggleBtn.style.borderColor = '#37352f';
               booleanPanel.style.display = 'block';
               this.updateBooleanShapesList();
               this.showTooltip('布尔运算模式已启用，请选择两个图形进行运算', 3000);
           } else {
               toggleBtn.textContent = '布尔运算';
-              toggleBtn.style.backgroundColor = '#007bff';
+              toggleBtn.style.backgroundColor = '#ffffff';
+              toggleBtn.style.color = '#37352f';
+              toggleBtn.style.borderColor = '#e5e5e5';
               booleanPanel.style.display = 'none';
               this.cancelBooleanOperation();
               this.showTooltip('布尔运算模式已关闭', 1500);
@@ -7225,6 +7229,21 @@ class Shape3DViewer {
       enterDeformationMode() {
           this.showTooltip('进入变形编辑模式', 1500);
 
+          // 先更新UI，确保按钮状态正确
+          const btn = document.getElementById('toggleDeformation');
+          if (btn) {
+              btn.classList.add('mode-active');
+              btn.textContent = '退出变形编辑';
+              btn.style.backgroundColor = '#dc3545';
+              btn.style.color = '#ffffff';
+              btn.style.borderColor = '#dc3545';
+          }
+
+          const panel = document.getElementById('deformationPanel');
+          if (panel) {
+              panel.style.display = 'block';
+          }
+
           // 保存原始几何体（用于重置）
           this.originalGeometry = this.selectedShape.geometry.clone();
 
@@ -7262,19 +7281,6 @@ class Shape3DViewer {
 
           // 清空历史
           this.deformationHistory.clear();
-
-          // 更新UI
-          const btn = document.getElementById('toggleDeformation');
-          if (btn) {
-              btn.classList.add('mode-active');
-              btn.textContent = '退出变形编辑';
-              btn.style.backgroundColor = '#dc3545';
-          }
-
-          const panel = document.getElementById('deformationPanel');
-          if (panel) {
-              panel.style.display = 'block';
-          }
 
           this.updateDeformStatus();
       }
@@ -7318,7 +7324,9 @@ class Shape3DViewer {
           if (btn) {
               btn.classList.remove('mode-active');
               btn.textContent = '变形编辑';
-              btn.style.backgroundColor = '#007bff';
+              btn.style.backgroundColor = '#ffffff';
+              btn.style.color = '#37352f';
+              btn.style.borderColor = '#e5e5e5';
           }
 
           const panel = document.getElementById('deformationPanel');
